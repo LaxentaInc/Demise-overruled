@@ -58,21 +58,22 @@ public class GuiMainMenu extends GuiScreen {
             default -> 0;
         };
 
-        if (Demise.INSTANCE.getModuleManager().getModule(Shaders.class).blur.get()) {
+        Shaders shadersModule = Demise.INSTANCE.getModuleManager().getModule(Shaders.class);
+
+        if (shadersModule != null && shadersModule.isEnabled() && shadersModule.blur.get()) {
             MenuButton.shader = true;
             Blur.startBlur();
             renderButtons(buttonWidth, buttonHeight, mouseX, mouseY);
             Blur.endBlur(25, 1);
         }
 
-        if (Demise.INSTANCE.getModuleManager().getModule(Shaders.class).shadow.get()) {
+        if (shadersModule != null && shadersModule.isEnabled() && shadersModule.shadow.get()) {
             MenuButton.shader = true;
             stencilFramebuffer = RenderUtils.createFrameBuffer(stencilFramebuffer, true);
             stencilFramebuffer.framebufferClear();
             stencilFramebuffer.bindFramebuffer(true);
             renderButtons(buttonWidth, buttonHeight, mouseX, mouseY);
             stencilFramebuffer.unbindFramebuffer();
-            // reduced bloom shadow radius from 100 to 25 to optimize gpu fragment shader sampling overhead
             Shadow.renderBloom(stencilFramebuffer.framebufferTexture, 25, 1);
         }
 

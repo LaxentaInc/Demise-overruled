@@ -19,55 +19,58 @@ public class ModuleConfig extends Config {
     @Override
     public void loadConfig(JsonObject object) {
         for (Module module : Demise.INSTANCE.getModuleManager().getModules()) {
-            if (object.has(module.getName())) {
+            try {
+                if (object.has(module.getName())) {
+                    JsonObject moduleObject = object.get(module.getName()).getAsJsonObject();
 
-                JsonObject moduleObject = object.get(module.getName()).getAsJsonObject();
+                    if (moduleObject.has("State")) {
+                        module.setEnabled(moduleObject.get("State").getAsBoolean());
+                    }
 
-                if (moduleObject.has("State")) {
-                    module.setEnabled(moduleObject.get("State").getAsBoolean());
-                }
+                    if (moduleObject.has("Key")) {
+                        module.setKeyBind(moduleObject.get("Key").getAsInt());
+                    }
+                    if (moduleObject.has("Hidden")) {
+                        module.setHidden(moduleObject.get("Hidden").getAsBoolean());
+                    }
 
-                if (moduleObject.has("Key")) {
-                    module.setKeyBind(moduleObject.get("Key").getAsInt());
-                }
-                if (moduleObject.has("Hidden")) {
-                    module.setHidden(moduleObject.get("Hidden").getAsBoolean());
-                }
+                    if (moduleObject.has("Values")) {
+                        JsonObject valuesObject = moduleObject.get("Values").getAsJsonObject();
 
-                if (moduleObject.has("Values")) {
-                    JsonObject valuesObject = moduleObject.get("Values").getAsJsonObject();
-
-                    for (Value value : module.getValues()) {
-                        if (valuesObject.has(value.getName())) {
-                            JsonElement theValue = valuesObject.get(value.getName());
-                            if (value instanceof SliderValue sliderValue) {
-                                sliderValue.setValue(theValue.getAsNumber().floatValue());
-                            }
-                            if (value instanceof BoolValue boolValue) {
-                                boolValue.set(theValue.getAsBoolean());
-                            }
-                            if (value instanceof ModeValue modeValue) {
-                                modeValue.set(theValue.getAsString());
-                            }
-                            if (value instanceof MultiBoolValue multiBoolValue) {
-                                if (!theValue.getAsString().isEmpty()) {
-                                    String[] strings = theValue.getAsString().split(", ");
-                                    multiBoolValue.getToggled().forEach(option -> option.set(false));
-                                    for (String string : strings) {
-                                        multiBoolValue.getValues().stream().filter(setting -> setting.getName().equalsIgnoreCase(string)).forEach(boolValue -> boolValue.set(true));
+                        for (Value value : module.getValues()) {
+                            if (valuesObject.has(value.getName())) {
+                                JsonElement theValue = valuesObject.get(value.getName());
+                                if (value instanceof SliderValue sliderValue) {
+                                    sliderValue.setValue(theValue.getAsNumber().floatValue());
+                                }
+                                if (value instanceof BoolValue boolValue) {
+                                    boolValue.set(theValue.getAsBoolean());
+                                }
+                                if (value instanceof ModeValue modeValue) {
+                                    modeValue.set(theValue.getAsString());
+                                }
+                                if (value instanceof MultiBoolValue multiBoolValue) {
+                                    if (!theValue.getAsString().isEmpty()) {
+                                        String[] strings = theValue.getAsString().split(", ");
+                                        multiBoolValue.getToggled().forEach(option -> option.set(false));
+                                        for (String string : strings) {
+                                            multiBoolValue.getValues().stream().filter(setting -> setting.getName().equalsIgnoreCase(string)).forEach(boolValue -> boolValue.set(true));
+                                        }
                                     }
                                 }
-                            }
-                            if (value instanceof ColorValue colorValue) {
-                                JsonObject colorValues = theValue.getAsJsonObject();
-                                colorValue.set(ColorUtils.applyOpacity(new Color(colorValues.get("RGB").getAsInt()), colorValues.get("Alpha").getAsFloat()));
-                            }
-                            if (value instanceof TextValue textValue) {
-                                textValue.setText(theValue.getAsString());
+                                if (value instanceof ColorValue colorValue) {
+                                    JsonObject colorValues = theValue.getAsJsonObject();
+                                    colorValue.set(ColorUtils.applyOpacity(new Color(colorValues.get("RGB").getAsInt()), colorValues.get("Alpha").getAsFloat()));
+                                }
+                                if (value instanceof TextValue textValue) {
+                                    textValue.setText(theValue.getAsString());
+                                }
                             }
                         }
                     }
                 }
+            } catch (Exception e) {
+                Demise.LOGGER.warn("Failed to load config for module: " + module.getName(), e);
             }
         }
     }

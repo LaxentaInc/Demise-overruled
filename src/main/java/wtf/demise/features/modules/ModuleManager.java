@@ -40,14 +40,14 @@ public class ModuleManager {
 
     private static final Set<Class<? extends Module>> PLAYER_MODULES = Set.of(
             AntiVoid.class, AutoTool.class, BedBreaker.class, FastBow.class, FastBreak.class, FastPlace.class,
-            FastUse.class, Manager.class, NoFall.class, Scaffold.class, Stealer.class
+            FastUse.class, Manager.class, NoFall.class, Scaffold.class, Stealer.class, TellyBridge.class
     );
 
     private static final Set<Class<? extends Module>> MISC_MODULES = Set.of(
             AnnoyUtils.class, AutoQueue.class, AutoRegister.class, ExplosionBlock.class, FlagDetector.class,
             InventorySync.class, MurderMystery.class, Test.class, Twerk.class, BloxdPhysics.class, Gambling.class,
             AutoMeow.class, CheatDetector.class, Translator.class, Spammer.class, InputFix.class, RealLag.class,
-            KillInsults.class
+            KillInsults.class, TellyRecorder.class
     );
 
     private static final Set<Class<? extends Module>> EXPLOIT_MODULES = Set.of(

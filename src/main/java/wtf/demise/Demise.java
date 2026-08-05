@@ -167,16 +167,19 @@ public class Demise {
     private void setupSystemTray() {
         if (isWindows() && SystemTray.isSupported()) {
             try {
-                Image trayImage = ImageIO.read(Objects.requireNonNull(getClass().getResourceAsStream("/assets/minecraft/demise/img/logo.png")));
-                trayIcon = new TrayIcon(trayImage, clientName);
-                trayIcon.setImageAutoSize(true);
-                trayIcon.setToolTip(clientName);
+                java.io.InputStream is = getClass().getResourceAsStream("/assets/minecraft/demise/img/logo.png");
+                if (is != null) {
+                    Image trayImage = ImageIO.read(is);
+                    trayIcon = new TrayIcon(trayImage, clientName);
+                    trayIcon.setImageAutoSize(true);
+                    trayIcon.setToolTip(clientName);
 
-                SystemTray.getSystemTray().add(trayIcon);
-                trayIcon.displayMessage(clientName, "Client started successfully.", TrayIcon.MessageType.INFO);
+                    SystemTray.getSystemTray().add(trayIcon);
+                    trayIcon.displayMessage(clientName, "Client started successfully.", TrayIcon.MessageType.INFO);
 
-                LOGGER.info("System tray icon added.");
-            } catch (IOException | AWTException | NullPointerException e) {
+                    LOGGER.info("System tray icon added.");
+                }
+            } catch (IOException | AWTException e) {
                 LOGGER.error("Failed to create or add TrayIcon.", e);
             }
         } else {

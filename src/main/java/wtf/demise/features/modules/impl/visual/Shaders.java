@@ -15,8 +15,8 @@ import java.awt.*;
 
 @ModuleInfo(name = "Shaders", description = "Renders shaders in HUD elements.")
 public class Shaders extends Module {
-    public final BoolValue blur = new BoolValue("Blur", true, this);
-    public final BoolValue shadow = new BoolValue("Shadow", true, this);
+    public final BoolValue blur = new BoolValue("Blur", false, this);
+    public final BoolValue shadow = new BoolValue("Shadow", false, this);
     private final BoolValue bloom = new BoolValue("Bloom", false, this);
     public final BoolValue syncColor = new BoolValue("Sync bloom color", true, this, bloom::get);
     public final ColorValue bloomColor = new ColorValue("Bloom color", Color.cyan, this, () -> bloom.get() && !syncColor.get());

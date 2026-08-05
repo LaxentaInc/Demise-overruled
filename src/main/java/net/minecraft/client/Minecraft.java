@@ -142,7 +142,7 @@ public class Minecraft implements IThreadListener, IPlayerUsage {
     private static Minecraft theMinecraft;
     public PlayerControllerMP playerController;
     private boolean fullscreen;
-    private final boolean enableGLErrorChecking = true;
+    private final boolean enableGLErrorChecking = false;
     private boolean hasCrashed;
     private CrashReport crashReporter;
     public int displayWidth;
