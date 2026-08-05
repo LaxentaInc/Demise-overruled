@@ -1,20 +1,14 @@
 package wtf.demise.features.modules.impl.legit;
 
 import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.util.MathHelper;
 import org.lwjglx.input.Mouse;
 import wtf.demise.events.annotations.EventTarget;
-import wtf.demise.events.impl.player.MoveInputEvent;
 import wtf.demise.events.impl.player.UpdateEvent;
 import wtf.demise.events.impl.render.Render3DEvent;
 import wtf.demise.features.modules.Module;
 import wtf.demise.features.modules.ModuleInfo;
 import wtf.demise.features.values.impl.BoolValue;
-import wtf.demise.features.values.impl.ModeValue;
-import wtf.demise.features.values.impl.SliderValue;
-import wtf.demise.utils.math.MathUtils;
-import wtf.demise.utils.math.TimerUtils;
 import wtf.demise.utils.player.PlayerUtils;
 import wtf.demise.utils.player.rotation.RotationHandler;
 import wtf.demise.utils.player.rotation.RotationUtils;
@@ -22,146 +16,189 @@ import wtf.demise.utils.player.rotation.enums.MovementCorrectionMode;
 import wtf.demise.utils.player.rotation.enums.SmoothMode;
 import wtf.demise.utils.render.RenderUtils;
 
-@ModuleInfo(name = "AimAssist", description = "Assists in aiming.")
+import java.util.concurrent.ThreadLocalRandom;
+
+@ModuleInfo(name = "AimAssist", description = "Assists in aiming smoothly.")
 public class AimAssist extends Module {
-    private final SliderValue searchRange = new SliderValue("Search range", 4.0f, 1, 8, 0.1f, this);
-    private final SliderValue speed = new SliderValue("Speed", 25.0f, 5, 100, 1f, this);
-    private final ModeValue aimPoint = new ModeValue("Aim point", new String[]{"Nearest", "Head"}, "Nearest", this);
     private final BoolValue onlyOnClick = new BoolValue("Only on click", true, this);
-    private final SliderValue resetTime = new SliderValue("Reset time", 500, 0, 1000, 1, this, onlyOnClick::get);
     private final BoolValue teamCheck = new BoolValue("Team check", false, this);
     private final BoolValue targetESP = new BoolValue("Target ESP", false, this);
-    private final SliderValue breakAwayAngle = new SliderValue("Break away angle", 60, 20, 120, 5, this);
-    // controls how much vertical (pitch) correction is applied in nearest mode: 0 = yaw only, 100 = full pitch
-    private final SliderValue pitchStrength = new SliderValue("Pitch strength", 10.0f, 0, 100, 1f, this, () -> aimPoint.is("Nearest"));
-
-    // keep distance: automatically stops forward movement when within optimal attack range
-    private final BoolValue keepDistance = new BoolValue("Keep distance", false, this);
-    // the exact distance in blocks to maintain from the target's hitbox edge
-    private final SliderValue keepDistanceRange = new SliderValue("Distance", 3.0f, 1.5f, 5, 0.1f, this, keepDistance::get);
 
     private EntityLivingBase target;
-    private final TimerUtils resetTimer = new TimerUtils();
+    // Hysteresis tracking: 0 = None/Unset, 1 = Head, 2 = Chest, 3 = Legs
+    private int currentRegion = 0;
+
+    // Smoothed motion vectors (prevents direction flip overshoot & lag spikes)
+    private double smoothedMotionX = 0;
+    private double smoothedMotionZ = 0;
+
+    // Per-acquisition randomized human variance constants
+    private float maxSpeed = 25.0f;
+    private float stopThreshold = 0.1f;
+    private float hysteresisMargin = 3.0f;
 
     @Override
     public void onDisable() {
-        // hard reset so rotationhandler hands control straight back to raw mouse input
         RotationHandler.enabled = false;
         RotationHandler.targetRotation = null;
         RotationHandler.reset = true;
         target = null;
+        currentRegion = 0;
+        smoothedMotionX = 0;
+        smoothedMotionZ = 0;
     }
 
     @EventTarget
     public void onUpdate(UpdateEvent e) {
-        if (onlyOnClick.get() && Mouse.isButtonDown(0)) {
-            resetTimer.reset();
-        }
-
-        if (!onlyOnClick.get() || !resetTimer.hasTimeElapsed(resetTime.get())) {
-            target = PlayerUtils.getTarget(searchRange.get(), teamCheck.get());
-        } else {
+        if (onlyOnClick.get() && !Mouse.isButtonDown(0)) {
             target = null;
-        }
-
-        if (target == null) {
+            currentRegion = 0;
             return;
         }
 
-        float targetYaw;
-        float targetPitch;
-        float pitchSpeed;
-        float baseSpeed = speed.get();
+        acquireTarget();
 
-        if (aimPoint.is("Head")) {
-            // head mode: aim directly at the target's head with full pitch correction
-            float[] headRotation = RotationUtils.getRotations(
-                    target.posX,
-                    target.posY + target.getEyeHeight(),
-                    target.posZ
-            );
-            targetYaw = headRotation[0];
-            targetPitch = headRotation[1];
-            // full pitch speed in head mode so it actually locks onto the head
-            pitchSpeed = baseSpeed;
+        if (target == null) {
+            currentRegion = 0;
+            smoothedMotionX = 0;
+            smoothedMotionZ = 0;
+            return;
+        }
+
+        double deltaX = target.posX - target.lastTickPosX;
+        double deltaY = Math.abs(target.posY - target.lastTickPosY);
+        double deltaZ = target.posZ - target.lastTickPosZ;
+        double horizontalDistance = Math.hypot(deltaX, deltaZ);
+
+        double targetX;
+        double targetY;
+        double targetZ;
+
+        // Discontinuity / Rubberband Guard: If position jumps > 1.5 blocks horizontally or > 1.0 block vertically in 1 tick,
+        // skip lerping across the jump and snap directly to current position to avoid chasing ghost trajectories.
+        if (horizontalDistance > 1.5 || deltaY > 1.0) {
+            targetX = target.posX;
+            targetY = target.posY;
+            targetZ = target.posZ;
+            smoothedMotionX = 0;
+            smoothedMotionZ = 0;
         } else {
-            // nearest mode: aim horizontally at the target, only nudge pitch when outside the hitbox
-            float[] centerRotation = RotationUtils.getRotations(
-                    target.posX,
-                    target.posY + target.getEyeHeight() * 0.5,
-                    target.posZ
-            );
-            targetYaw = centerRotation[0];
+            float partialTicks = mc.timer.renderPartialTicks;
+            
+            // Exponentially smooth motion lead (60% history, 40% new input) to prevent direction-flip snapping
+            smoothedMotionX = (smoothedMotionX * 0.6) + (target.motionX * 0.4);
+            smoothedMotionZ = (smoothedMotionZ * 0.6) + (target.motionZ * 0.4);
 
-            // calculate the pitch range that covers the target's entire body (top to bottom of hitbox)
-            AxisAlignedBB hitbox = target.getEntityBoundingBox();
-            float pitchToTop = RotationUtils.getRotations(target.posX, hitbox.maxY, target.posZ)[1];
-            float pitchToBottom = RotationUtils.getRotations(target.posX, hitbox.minY, target.posZ)[1];
+            // Clamp motion lead magnitude to max 0.25 blocks to prevent packet spikes from causing flicks
+            double leadX = MathHelper.clamp_double(smoothedMotionX, -0.25, 0.25);
+            double leadZ = MathHelper.clamp_double(smoothedMotionZ, -0.25, 0.25);
 
-            // ensure top pitch < bottom pitch (looking up = negative, looking down = positive)
-            float minPitch = Math.min(pitchToTop, pitchToBottom);
-            float maxPitch = Math.max(pitchToTop, pitchToBottom);
+            targetX = (target.lastTickPosX + deltaX * partialTicks) + leadX;
+            targetY = target.lastTickPosY + (target.posY - target.lastTickPosY) * partialTicks;
+            targetZ = (target.lastTickPosZ + deltaZ * partialTicks) + leadZ;
+        }
 
-            float currentPitch = mc.thePlayer.rotationPitch;
+        double eyeHeight = target.getEyeHeight();
+        double targetHeadY = targetY + eyeHeight;
+        double targetChestY = targetY + eyeHeight * 0.65;
+        double targetLegsY = targetY + eyeHeight * 0.25;
 
-            if (currentPitch >= minPitch && currentPitch <= maxPitch) {
-                // player is already aiming within the target's body - don't touch pitch at all
-                targetPitch = currentPitch;
-                pitchSpeed = 0;
-            } else {
-                // player is aiming above or below the target, gently nudge toward the nearest edge
-                float nearestEdgePitch = (Math.abs(currentPitch - minPitch) < Math.abs(currentPitch - maxPitch))
-                        ? minPitch : maxPitch;
+        // Calculate pitch angles to the 3 anatomical reference points
+        float pitchToHead = RotationUtils.getRotations(targetX, targetHeadY, targetZ)[1];
+        float pitchToChest = RotationUtils.getRotations(targetX, targetChestY, targetZ)[1];
+        float pitchToLegs = RotationUtils.getRotations(targetX, targetLegsY, targetZ)[1];
 
-                // blend between current pitch and nearest edge based on pitch strength setting
-                float pitchFactor = pitchStrength.get() / 100.0f;
-                targetPitch = currentPitch + (nearestEdgePitch - currentPitch) * pitchFactor;
-                pitchSpeed = baseSpeed * pitchFactor;
+        float currentPitch = mc.thePlayer.rotationPitch;
+        float diffHead = Math.abs(currentPitch - pitchToHead);
+        float diffChest = Math.abs(currentPitch - pitchToChest);
+        float diffLegs = Math.abs(currentPitch - pitchToLegs);
+
+        // Hysteresis Region Selection: Lock to region unless candidate region is at least hysteresisMargin closer.
+        int candidateRegion;
+        if (diffHead <= diffChest && diffHead <= diffLegs) {
+            candidateRegion = 1;
+        } else if (diffChest <= diffLegs) {
+            candidateRegion = 2;
+        } else {
+            candidateRegion = 3;
+        }
+
+        if (currentRegion == 0) {
+            currentRegion = candidateRegion;
+        } else if (currentRegion != candidateRegion) {
+            float currentDiff = (currentRegion == 1) ? diffHead : (currentRegion == 2) ? diffChest : diffLegs;
+            float candidateDiff = (candidateRegion == 1) ? diffHead : (candidateRegion == 2) ? diffChest : diffLegs;
+
+            // Only switch regions if candidate is > hysteresisMargin degrees closer
+            if (currentDiff - candidateDiff > hysteresisMargin) {
+                currentRegion = candidateRegion;
             }
         }
 
-        float[] targetRotation = new float[]{targetYaw, targetPitch};
+        double chosenTargetY = (currentRegion == 1) ? targetHeadY : (currentRegion == 2) ? targetChestY : targetLegsY;
 
-        // check how far the player is already looking from the target horizontally
+        // Calculate target rotation to chosen anatomical region
+        float[] rawRotations = RotationUtils.getRotations(targetX, chosenTargetY, targetZ);
+        float targetYaw = rawRotations[0];
+        float targetPitch = rawRotations[1];
+
         float yawDiff = Math.abs(RotationUtils.getAngleDifference(targetYaw, mc.thePlayer.rotationYaw));
+        float pitchDiff = Math.abs(targetPitch - currentPitch);
+        float totalDist = (float) Math.hypot(yawDiff, pitchDiff);
 
-        // if the player is looking further away than the break-away angle, let them go
-        if (yawDiff > breakAwayAngle.get()) {
+        // Break away if total 3D angular distance exceeds 60 degrees (prevents vertical snap at steep angles)
+        if (totalDist > 60.0f) {
             return;
         }
 
-        // subtle speed randomization (+-10%) to avoid perfectly constant rotation velocity
-        float randomizedSpeed = MathUtils.randomizeFloat(baseSpeed * 0.9f, baseSpeed * 1.1f);
+        // Micro-stutter prevention: if within stopThreshold degrees of target, stop adjusting entirely
+        if (totalDist < stopThreshold) {
+            RotationHandler.enabled = false;
+            return;
+        }
+
+        // Normalize distance mapped to the 60.0 degree break-away threshold (prevents speed plateau)
+        float normalizedDist = Math.min(totalDist / 60.0f, 1.0f);
+
+        // Genuine Hermite Smoothstep cubic easing: 3x^2 - 2x^3
+        float smoothStepFactor = normalizedDist * normalizedDist * (3.0f - 2.0f * normalizedDist);
+        float calculatedSpeed = smoothStepFactor * maxSpeed;
 
         RotationHandler.setRotation(
-                targetRotation,
+                new float[]{targetYaw, targetPitch},
                 MovementCorrectionMode.Silent,
-                new float[]{randomizedSpeed, Math.max(pitchSpeed, 0.01f)},
-                // enable acceleration for smooth ramp-up that looks human
-                true, new float[]{0.4f, 0.4f},
+                new float[]{calculatedSpeed, calculatedSpeed * 0.7f},
+                true, new float[]{0.3f, 0.3f},
                 SmoothMode.Relative,
                 false,
                 1f
         );
     }
 
-    @EventTarget
-    public void onMoveInput(MoveInputEvent e) {
-        // keep distance: cancel forward movement when within the desired range of the target
-        if (!keepDistance.get() || target == null) {
-            return;
-        }
+    private void acquireTarget() {
+        EntityLivingBase newTarget = PlayerUtils.getTarget(4.5f, teamCheck.get());
 
-        // use hitbox-edge distance for accurate range calculation matching mc's actual reach check
-        double distanceToTarget = PlayerUtils.getDistanceToEntityBox(target);
+        if (target != null && newTarget != null && newTarget != target && !target.isDead) {
+            double currentDist = PlayerUtils.getDistanceToEntityBox(target);
+            double newDist = PlayerUtils.getDistanceToEntityBox(newTarget);
 
-        if (distanceToTarget <= keepDistanceRange.get()) {
-            // within optimal range - kill forward input so the player stops walking into the target
-            // strafe and backward movement are preserved so the player can still dodge and retreat
-            if (e.getForward() > 0) {
-                e.setForward(0);
+            if (currentDist - newDist < 0.6) {
+                newTarget = target;
             }
         }
+
+        if (newTarget != target) {
+            currentRegion = 0; // reset region commitment when switching targets
+            smoothedMotionX = 0;
+            smoothedMotionZ = 0;
+
+            // Introduce subtle per-acquisition human variance so tracking speed & thresholds aren't identical every time
+            maxSpeed = (float) ThreadLocalRandom.current().nextDouble(22.0, 28.0);
+            stopThreshold = (float) ThreadLocalRandom.current().nextDouble(0.08, 0.14);
+            hysteresisMargin = (float) ThreadLocalRandom.current().nextDouble(2.5, 3.5);
+        }
+
+        target = newTarget;
     }
 
     @EventTarget

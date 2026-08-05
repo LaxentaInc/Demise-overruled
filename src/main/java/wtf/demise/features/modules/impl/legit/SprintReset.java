@@ -13,21 +13,33 @@ import wtf.demise.features.modules.ModuleInfo;
 import wtf.demise.features.values.impl.BoolValue;
 import wtf.demise.features.values.impl.ModeValue;
 import wtf.demise.features.values.impl.SliderValue;
+import wtf.demise.utils.math.MathUtils;
 import wtf.demise.utils.math.TimerUtils;
 import wtf.demise.utils.player.PlayerUtils;
 
 @ModuleInfo(name = "SprintReset", description = "Makes you deal increased knockback to targets.")
 public class SprintReset extends Module {
-    private final ModeValue mode = new ModeValue("Mode", new String[]{"ReSprint", "WTap", "Sneak", "Block", "Packet", "LessPacket"}, "ReSprint", this);
+    private final ModeValue mode = new ModeValue("Mode", new String[]{"ReSprint", "WTap", "STap", "Sneak", "Block", "Packet", "LessPacket"}, "WTap", this);
+    private final SliderValue chance = new SliderValue("Chance", 70, 1, 100, 1, this);
     private final BoolValue fast = new BoolValue("Fast", false, this, () -> mode.is("ReSprint"));
-    private final SliderValue reSprintTime = new SliderValue("ReSprint time", 50, 1, 300, 1, this, () -> mode.is("WTap") || mode.is("Block") || mode.is("Sneak"));
-    private final ModeValue fallbackMode = new ModeValue("Fallback mode", new String[]{"ReSprint", "WTap", "Packet", "LessPacket"}, "WTap", this, () -> mode.is("Block"));
+    private final SliderValue minReSprintTime = new SliderValue("Min time", 40, 10, 200, 1, this, () -> mode.is("WTap") || mode.is("STap") || mode.is("Block") || mode.is("Sneak"));
+    private final SliderValue maxReSprintTime = new SliderValue("Max time", 80, 10, 200, 1, this, () -> mode.is("WTap") || mode.is("STap") || mode.is("Block") || mode.is("Sneak"));
+    private final ModeValue fallbackMode = new ModeValue("Fallback mode", new String[]{"ReSprint", "WTap", "STap", "Packet", "LessPacket"}, "WTap", this, () -> mode.is("Block"));
     private final BoolValue diffCheck = new BoolValue("Angle diff check", false, this);
     private final BoolValue notWhileHurt = new BoolValue("Not while hurt", false, this);
 
     private final TimerUtils timer = new TimerUtils();
+    private final TimerUtils combatTimer = new TimerUtils();
     private boolean isBlocking;
     private EntityLivingBase target;
+    private long currentResetDelay;
+    private int hitCount;
+    private int lastTargetHurtTime;
+
+    @Override
+    public void onDisable() {
+        hitCount = 0;
+    }
 
     @EventTarget
     public void onUpdate(UpdateEvent e) {
@@ -39,6 +51,11 @@ public class SprintReset extends Module {
             return;
         }
 
+        // if out of combat for 5 seconds, reset hit counter for 100% initial burst
+        if (combatTimer.hasTimeElapsed(5000)) {
+            hitCount = 0;
+        }
+
         float calcYaw = (float) (MathHelper.atan2(mc.thePlayer.posZ - target.posZ, mc.thePlayer.posX - target.posX) * 180.0 / Math.PI - 90.0);
         float diffX = Math.abs(MathHelper.wrapAngleTo180_float(calcYaw - target.rotationYawHead));
 
@@ -46,24 +63,34 @@ public class SprintReset extends Module {
             return;
         }
 
-        if (target.hurtTime == 10) {
-            switch (mode.get()) {
-                case "WTap", "Sneak":
-                    timer.reset();
-                    break;
-                case "Block":
-                    if (PlayerUtils.isHoldingSword()) {
-                        timer.reset();
-                    } else {
-                        reset(true);
-                    }
-                    break;
-            }
+        if (target.hurtTime == 10 && lastTargetHurtTime < 10) {
+            combatTimer.reset();
+            hitCount++;
 
-            if (!mode.is("WTap") && !mode.is("Block") && !mode.is("Sneak")) {
-                reset(false);
+            // 100% chance for first 5 hits after 5s out-of-combat, then uses configured chance (default 70%)
+            int effectiveChance = (hitCount <= 5) ? 100 : (int) chance.get();
+
+            if (MathUtils.randomizeInt(1, 100) <= effectiveChance) {
+                currentResetDelay = (long) MathUtils.randomizeFloat(minReSprintTime.get(), maxReSprintTime.get());
+                switch (mode.get()) {
+                    case "WTap", "STap", "Sneak":
+                        timer.reset();
+                        break;
+                    case "Block":
+                        if (PlayerUtils.isHoldingSword()) {
+                            timer.reset();
+                        } else {
+                            reset(true);
+                        }
+                        break;
+                }
+
+                if (!mode.is("WTap") && !mode.is("STap") && !mode.is("Block") && !mode.is("Sneak")) {
+                    reset(false);
+                }
             }
         }
+        lastTargetHurtTime = target.hurtTime;
     }
 
     private void reset(boolean fallback) {
@@ -75,7 +102,7 @@ public class SprintReset extends Module {
                     mc.thePlayer.sprintingTicksLeft = 0;
                 }
                 break;
-            case "WTap", "Sneak":
+            case "WTap", "STap", "Sneak":
                 timer.reset();
                 break;
             case "Packet":
@@ -97,8 +124,8 @@ public class SprintReset extends Module {
     public void onGameEvent(GameEvent e) {
         if (mode.is("Block")) {
             if (target != null) {
-                KeyBinding.setKeyBindState(mc.gameSettings.keyBindUseItem.getKeyCode(), !timer.hasTimeElapsed(reSprintTime.get()));
-                isBlocking = !timer.hasTimeElapsed(reSprintTime.get());
+                KeyBinding.setKeyBindState(mc.gameSettings.keyBindUseItem.getKeyCode(), !timer.hasTimeElapsed(currentResetDelay));
+                isBlocking = !timer.hasTimeElapsed(currentResetDelay);
             } else if (isBlocking) {
                 KeyBinding.setKeyBindState(mc.gameSettings.keyBindUseItem.getKeyCode(), false);
             }
@@ -107,9 +134,13 @@ public class SprintReset extends Module {
 
     @EventTarget
     public void onMoveInput(MoveInputEvent e) {
-        if (!timer.hasTimeElapsed(reSprintTime.get())) {
+        if (!timer.hasTimeElapsed(currentResetDelay)) {
             if (mode.is("WTap") || (mode.is("Block") && fallbackMode.is("WTap"))) {
                 e.setForward(0);
+            }
+
+            if (mode.is("STap") || (mode.is("Block") && fallbackMode.is("STap"))) {
+                e.setForward(-1);
             }
 
             if (mode.is("Sneak") || (mode.is("Block") && fallbackMode.is("Sneak"))) {
