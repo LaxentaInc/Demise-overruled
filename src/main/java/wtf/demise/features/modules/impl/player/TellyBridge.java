@@ -113,7 +113,7 @@ public class TellyBridge extends Module {
                     targetPitch = 70.5f;
                 }
 
-                boolean placeWindow = airTicks >= 7 && airTicks <= 11;
+                boolean placeWindow = airTicks >= 7;
 
                 if (placeWindow && blockData != null) {
                     placeBlock(blockData);
@@ -168,8 +168,8 @@ public class TellyBridge extends Module {
             e.setForward(1.0f);
             e.setStrafe(strafeCorrection);
         } else {
-            // backward placement input
-            e.setForward(-1.0f);
+            // coasting backward naturally without artificial mid-air boosting
+            e.setForward(0.0f);
             e.setStrafe(strafeCorrection);
         }
     }
