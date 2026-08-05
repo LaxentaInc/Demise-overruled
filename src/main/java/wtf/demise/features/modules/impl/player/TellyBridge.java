@@ -28,6 +28,7 @@ public class TellyBridge extends Module {
     private float targetPitch;
     private double anchorX;
     private double anchorZ;
+    private double startY;
 
     @Override
     public void onEnable() {
@@ -36,6 +37,7 @@ public class TellyBridge extends Module {
         initialYaw = Math.round(mc.thePlayer.rotationYaw / 90.0f) * 90.0f;
         anchorX = Math.floor(mc.thePlayer.posX) + 0.5;
         anchorZ = Math.floor(mc.thePlayer.posZ) + 0.5;
+        startY = Math.floor(mc.thePlayer.posY - 1.0);
     }
 
     @Override
@@ -79,6 +81,7 @@ public class TellyBridge extends Module {
                     anchorZ = Math.floor(mc.thePlayer.posZ) + 0.5;
                 }
 
+                startY = Math.floor(mc.thePlayer.posY - 0.5);
                 mc.thePlayer.jump();
                 mc.thePlayer.setSprinting(true);
             }
@@ -123,15 +126,19 @@ public class TellyBridge extends Module {
             KeyBinding.setKeyBindState(mc.gameSettings.keyBindUseItem.getKeyCode(), Keyboard.isKeyDown(mc.gameSettings.keyBindUseItem.getKeyCode()));
         }
 
-        // fast linear camera rotation (SmoothMode.Linear + speed 180 deg) to prevent angular trajectory drift
+        // hard lock visual player camera directly to target yaw and pitch to eliminate mouse-step accumulation
+        mc.thePlayer.rotationYaw = targetYaw;
+        mc.thePlayer.rotationPitch = targetPitch;
+
+        // camera rotation and packet synchronization with strict movement correction
         RotationHandler.setRotation(
                 new float[]{targetYaw, targetPitch},
                 MovementCorrectionMode.Strict,
                 new float[]{180.0f, 180.0f},
-                true,
+                false,
                 new float[]{0.0f, 0.0f},
                 SmoothMode.Linear,
-                false,
+                true,
                 1.0f
         );
     }
@@ -168,7 +175,7 @@ public class TellyBridge extends Module {
     }
 
     private BlockData findBlockData() {
-        BlockPos playerPos = new BlockPos(mc.thePlayer.posX, mc.thePlayer.posY - 1, mc.thePlayer.posZ);
+        BlockPos playerPos = new BlockPos(mc.thePlayer.posX, startY, mc.thePlayer.posZ);
         EnumFacing moveFacing = EnumFacing.fromAngle(initialYaw);
         EnumFacing backFacing = moveFacing.getOpposite();
 
