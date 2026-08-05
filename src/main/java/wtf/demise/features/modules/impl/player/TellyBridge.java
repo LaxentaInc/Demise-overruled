@@ -72,8 +72,8 @@ public class TellyBridge extends Module {
 
         // check if player is approaching a block edge on ground to initiate jump
         if (onGround && MoveUtil.isMoving()) {
-            double nextX = mc.thePlayer.posX + -Math.sin(Math.toRadians(initialYaw)) * 0.6;
-            double nextZ = mc.thePlayer.posZ + Math.cos(Math.toRadians(initialYaw)) * 0.6;
+            double nextX = mc.thePlayer.posX + -Math.sin(Math.toRadians(initialYaw)) * 0.15;
+            double nextZ = mc.thePlayer.posZ + Math.cos(Math.toRadians(initialYaw)) * 0.15;
             BlockPos edgePos = new BlockPos(nextX, mc.thePlayer.posY - 1, nextZ);
             boolean isAirEdge = mc.theWorld.getBlockState(edgePos).getBlock() instanceof BlockAir;
 
