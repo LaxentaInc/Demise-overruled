@@ -95,18 +95,12 @@ public class TellyBridge extends Module {
                 targetPitch = 56.4f;
                 KeyBinding.setKeyBindState(mc.gameSettings.keyBindUseItem.getKeyCode(), false);
             } else if (airTicks >= 3 && airTicks <= 8) {
-                // placement phase: face backward along cardinal heading
+                // placement phase: face backward along cardinal heading with fixed human Telly pitch (75.0 deg)
                 targetYaw = initialYaw - 180.0f;
+                targetPitch = 75.0f;
 
                 BlockData blockData = findBlockData();
-                if (blockData != null) {
-                    float[] rots = RotationUtils.getRotations(blockData.pos, blockData.facing);
-                    targetPitch = rots[1];
-                } else {
-                    targetPitch = 68.5f;
-                }
-
-                boolean placeWindow = airTicks >= 3 && airTicks <= 8;
+                boolean placeWindow = airTicks >= 5 && airTicks <= 8 && mc.thePlayer.motionY <= 0;
                 KeyBinding.setKeyBindState(mc.gameSettings.keyBindUseItem.getKeyCode(), placeWindow);
 
                 if (placeWindow && blockData != null) {
@@ -129,7 +123,7 @@ public class TellyBridge extends Module {
         mc.thePlayer.rotationYaw = targetYaw;
         mc.thePlayer.rotationPitch = targetPitch;
 
-        // camera rotation and packet synchronization with strict movement correction
+        // camera rotation and packet synchronization with strict movement correction (non-silent for legit anti-cheat compliance)
         RotationHandler.setRotation(
                 new float[]{targetYaw, targetPitch},
                 MovementCorrectionMode.Strict,
@@ -137,7 +131,7 @@ public class TellyBridge extends Module {
                 false,
                 new float[]{0.0f, 0.0f},
                 SmoothMode.Linear,
-                true,
+                false,
                 1.0f
         );
     }
