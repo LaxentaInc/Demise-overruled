@@ -21,28 +21,25 @@ import wtf.demise.utils.player.rotation.RotationUtils;
 import wtf.demise.utils.player.rotation.enums.MovementCorrectionMode;
 import wtf.demise.utils.player.rotation.enums.SmoothMode;
 
-@ModuleInfo(name = "TellyBridge", description = "Executes strict fixed-cardinal, line-anchored legit Telly Bridging with dynamic block vector aiming.")
+@ModuleInfo(name = "TellyBridge", description = "Executes strict fixed-cardinal, line-anchored legit Telly Bridging matching user recording telemetry.")
 public class TellyBridge extends Module {
     private float initialYaw;
     private float targetYaw;
     private float targetPitch;
-    private boolean isLocked;
     private double anchorX;
     private double anchorZ;
 
     @Override
     public void onEnable() {
         if (mc.thePlayer == null) return;
-        // lock initial cardinal direction (0, 90, 180, 270 / -90, -180, -270) permanently upon enabling
+        // lock initial cardinal direction (0, 90, 180, 270 / -90, -180, -270) permanently upon enabling module
         initialYaw = Math.round(mc.thePlayer.rotationYaw / 90.0f) * 90.0f;
-        isLocked = true;
         anchorX = Math.floor(mc.thePlayer.posX) + 0.5;
         anchorZ = Math.floor(mc.thePlayer.posZ) + 0.5;
     }
 
     @Override
     public void onDisable() {
-        isLocked = false;
         if (mc.gameSettings != null) {
             KeyBinding.setKeyBindState(mc.gameSettings.keyBindUseItem.getKeyCode(), Keyboard.isKeyDown(mc.gameSettings.keyBindUseItem.getKeyCode()));
         }
@@ -56,12 +53,6 @@ public class TellyBridge extends Module {
         int blockSlot = getBlockSlot();
         if (blockSlot != -1) {
             mc.thePlayer.inventory.currentItem = blockSlot;
-        }
-
-        // lock anchor line once on ground if not set
-        if (!isLocked && mc.thePlayer.onGround) {
-            initialYaw = Math.round(mc.thePlayer.rotationYaw / 90.0f) * 90.0f;
-            isLocked = true;
         }
 
         boolean onGround = mc.thePlayer.onGround;
@@ -92,48 +83,51 @@ public class TellyBridge extends Module {
             if (airTicks >= 1 && airTicks <= 2) {
                 // leap phase: turn camera backward towards initial yaw - 180
                 targetYaw = initialYaw - 180.0f;
-                targetPitch = 45.0f;
+                targetPitch = 56.4f;
                 KeyBinding.setKeyBindState(mc.gameSettings.keyBindUseItem.getKeyCode(), false);
-            } else if (airTicks >= 3 && airTicks <= 7) {
-                // placement phase: find exact target block data behind/below player and calculate 3d rotation vector
+            } else if (airTicks >= 3 && airTicks <= 8) {
+                // placement phase (AirTicks 3 to 8 derived from user telemetry): face backward along cardinal heading
+                targetYaw = initialYaw - 180.0f;
+
                 BlockData blockData = findBlockData();
                 if (blockData != null) {
                     float[] rots = RotationUtils.getRotations(blockData.pos, blockData.facing);
-                    targetYaw = rots[0];
                     targetPitch = rots[1];
                 } else {
-                    targetYaw = initialYaw - 180.0f;
-                    targetPitch = 73.5f;
+                    targetPitch = 68.5f; // exact pitch average from telemetry log
                 }
 
-                // hold physical right click and place block
-                boolean placeWindow = airTicks >= 4;
+                // hold physical right click starting at air tick 3 up to air tick 8 for full placement window
+                boolean placeWindow = airTicks >= 3 && airTicks <= 8;
                 KeyBinding.setKeyBindState(mc.gameSettings.keyBindUseItem.getKeyCode(), placeWindow);
 
                 if (placeWindow && blockData != null) {
                     placeBlock(blockData);
                 }
             } else {
-                // return phase: face forward fixed cardinal direction
+                // return phase starting at air tick 9: return camera forward to initial yaw
                 targetYaw = initialYaw;
-                targetPitch = 15.0f;
+                targetPitch = 20.0f;
                 KeyBinding.setKeyBindState(mc.gameSettings.keyBindUseItem.getKeyCode(), false);
             }
-
-            // smooth physical camera movement (silent = false)
-            RotationHandler.setRotation(
-                    new float[]{targetYaw, targetPitch},
-                    MovementCorrectionMode.Strict,
-                    new float[]{100.0f, 100.0f},
-                    true,
-                    new float[]{0.1f, 0.1f},
-                    SmoothMode.Relative,
-                    false,
-                    1.0f
-            );
         } else {
+            // ground phase: face forward initial yaw direction cleanly
+            targetYaw = initialYaw;
+            targetPitch = 20.0f;
             KeyBinding.setKeyBindState(mc.gameSettings.keyBindUseItem.getKeyCode(), Keyboard.isKeyDown(mc.gameSettings.keyBindUseItem.getKeyCode()));
         }
+
+        // smooth physical camera movement (60 deg per tick smooth turn speed matching human recording)
+        RotationHandler.setRotation(
+                new float[]{targetYaw, targetPitch},
+                MovementCorrectionMode.Strict,
+                new float[]{60.0f, 60.0f},
+                true,
+                new float[]{0.1f, 0.1f},
+                SmoothMode.Relative,
+                false, // non-silent: visual camera physically rotates in-game
+                1.0f
+        );
     }
 
     @EventTarget
@@ -159,11 +153,12 @@ public class TellyBridge extends Module {
         } else if (airTicks >= 1 && airTicks <= 2) {
             e.setForward(1.0f);
             e.setStrafe(strafeCorrection);
-        } else if (airTicks >= 3 && airTicks <= 7) {
-            e.setForward(1.0f);
+        } else if (airTicks >= 3 && airTicks <= 8) {
+            // During placement phase (facing backward targetYaw = initialYaw - 180), e.setForward(-1.0f) represents holding S to move forward down the bridge in world-space!
+            e.setForward(-1.0f);
             e.setStrafe(strafeCorrection);
         } else {
-            e.setForward(0.0f);
+            e.setForward(1.0f);
             e.setStrafe(strafeCorrection);
         }
     }
