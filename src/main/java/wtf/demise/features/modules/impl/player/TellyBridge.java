@@ -51,6 +51,9 @@ public class TellyBridge extends Module {
     public void onUpdate(UpdateEvent e) {
         if (mc.thePlayer == null || mc.theWorld == null) return;
 
+        // forcibly maintain sprint flag at all times to prevent mid-air momentum loss
+        mc.thePlayer.setSprinting(true);
+
         // auto select block slot in hotbar
         int blockSlot = getBlockSlot();
         if (blockSlot != -1) {
@@ -90,32 +93,37 @@ public class TellyBridge extends Module {
 
         if (!onGround) {
             if (airTicks >= 1 && airTicks <= 2) {
-                // leap phase: turn camera backward towards initial yaw - 180
+                // human telly phase 1: leap forward facing movement heading cleanly
+                targetYaw = initialYaw;
+                targetPitch = 20.0f;
+            } else if (airTicks >= 3 && airTicks <= 6) {
+                // human telly phase 2: flick camera backward smoothly
                 targetYaw = initialYaw - 180.0f;
-                targetPitch = 56.4f;
-                KeyBinding.setKeyBindState(mc.gameSettings.keyBindUseItem.getKeyCode(), false);
-            } else if (airTicks >= 3 && airTicks <= 8) {
-                // placement phase: face backward along cardinal heading with fixed human Telly pitch (75.0 deg)
+                targetPitch = 50.0f + (airTicks - 3) * 4.0f;
+            } else {
+                // human telly phase 3: descent placement window (airticks 7-11) derived from human 3k log
                 targetYaw = initialYaw - 180.0f;
-                targetPitch = 75.0f;
 
                 BlockData blockData = findBlockData();
-                boolean placeWindow = airTicks >= 5 && airTicks <= 8 && mc.thePlayer.motionY <= 0;
-                KeyBinding.setKeyBindState(mc.gameSettings.keyBindUseItem.getKeyCode(), placeWindow);
+                if (blockData != null) {
+                    Vec3 hitVec = RotationUtils.getVec3(blockData.pos, blockData.facing);
+                    float[] rots = RotationUtils.getRotations(hitVec);
+                    targetPitch = MathHelper.clamp_float(rots[1], 68.0f, 73.0f);
+                } else {
+                    targetPitch = 70.5f;
+                }
+
+                boolean placeWindow = airTicks >= 7 && airTicks <= 11;
 
                 if (placeWindow && blockData != null) {
                     placeBlock(blockData);
                 }
-            } else {
-                // return phase: return camera forward to initial yaw
-                targetYaw = initialYaw;
-                targetPitch = 20.0f;
-                KeyBinding.setKeyBindState(mc.gameSettings.keyBindUseItem.getKeyCode(), false);
             }
         } else {
             // ground phase: face forward initial yaw direction cleanly
             targetYaw = initialYaw;
             targetPitch = 20.0f;
+            mc.thePlayer.setSprinting(true);
             KeyBinding.setKeyBindState(mc.gameSettings.keyBindUseItem.getKeyCode(), Keyboard.isKeyDown(mc.gameSettings.keyBindUseItem.getKeyCode()));
         }
 
@@ -123,11 +131,11 @@ public class TellyBridge extends Module {
         mc.thePlayer.rotationYaw = targetYaw;
         mc.thePlayer.rotationPitch = targetPitch;
 
-        // camera rotation and packet synchronization with strict movement correction (non-silent for legit anti-cheat compliance)
+        // camera rotation and packet synchronization with strict movement correction for legit anti-cheat compliance (silent = false)
         RotationHandler.setRotation(
                 new float[]{targetYaw, targetPitch},
                 MovementCorrectionMode.Strict,
-                new float[]{180.0f, 180.0f},
+                new float[]{999.0f, 999.0f},
                 false,
                 new float[]{0.0f, 0.0f},
                 SmoothMode.Linear,
@@ -156,13 +164,12 @@ public class TellyBridge extends Module {
             e.setForward(1.0f);
             e.setStrafe(strafeCorrection);
         } else if (airTicks >= 1 && airTicks <= 2) {
+            // forward leap momentum
             e.setForward(1.0f);
-            e.setStrafe(strafeCorrection);
-        } else if (airTicks >= 3 && airTicks <= 8) {
-            e.setForward(-1.0f);
             e.setStrafe(strafeCorrection);
         } else {
-            e.setForward(1.0f);
+            // backward placement input
+            e.setForward(-1.0f);
             e.setStrafe(strafeCorrection);
         }
     }
@@ -172,10 +179,13 @@ public class TellyBridge extends Module {
         EnumFacing moveFacing = EnumFacing.fromAngle(initialYaw);
         EnumFacing backFacing = moveFacing.getOpposite();
 
-        // search up to 3 blocks back along movement line for nearest solid block face
-        for (int i = 0; i <= 3; i++) {
+        // search up to 4 blocks back along movement line for nearest solid block side face at initialY height
+        for (int i = 0; i <= 4; i++) {
             BlockPos searchPos = playerPos.offset(backFacing, i);
             for (EnumFacing facing : EnumFacing.values()) {
+                if (facing == EnumFacing.UP || facing == EnumFacing.DOWN) {
+                    continue;
+                }
                 BlockPos neighbor = searchPos.offset(facing);
                 if (!(mc.theWorld.getBlockState(neighbor).getBlock() instanceof BlockAir)) {
                     return new BlockData(neighbor, facing.getOpposite());
@@ -190,11 +200,7 @@ public class TellyBridge extends Module {
             return;
         }
 
-        Vec3 hitVec = new Vec3(
-                data.pos.getX() + 0.5 + data.facing.getFrontOffsetX() * 0.5,
-                data.pos.getY() + 0.5 + data.facing.getFrontOffsetY() * 0.5,
-                data.pos.getZ() + 0.5 + data.facing.getFrontOffsetZ() * 0.5
-        );
+        Vec3 hitVec = RotationUtils.getVec3(data.pos, data.facing);
 
         if (mc.playerController.onPlayerRightClick(mc.thePlayer, mc.theWorld, mc.thePlayer.getHeldItem(), data.pos, data.facing, hitVec)) {
             mc.thePlayer.swingItem();
@@ -222,3 +228,7 @@ public class TellyBridge extends Module {
         }
     }
 }
+
+
+
+
