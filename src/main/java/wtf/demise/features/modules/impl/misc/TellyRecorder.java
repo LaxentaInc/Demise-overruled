@@ -20,7 +20,7 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
 
-@ModuleInfo(name = "TellyRecorder", description = "Logs numerical, rotational, and input data during manual telly bridging.")
+@ModuleInfo(name = "TellyRecorder", description = "Logs detailed spatial, numerical, rotational, and input telemetry.")
 public class TellyRecorder extends Module {
     private final List<String> recordedTicks = new ArrayList<>();
     private int tickCounter = 0;
@@ -34,7 +34,7 @@ public class TellyRecorder extends Module {
         tickCounter = 0;
         initialYaw = mc.thePlayer.rotationYaw;
         isRecording = true;
-        ChatUtils.sendMessageClient("TellyRecorder started. Do your manual telly bridge now!");
+        ChatUtils.sendMessageClient("TellyRecorder started. Detailed spatial telemetry active!");
     }
 
     @Override
@@ -47,12 +47,12 @@ public class TellyRecorder extends Module {
 
         File saveFile = new File(Demise.INSTANCE.getMainDir(), "telly_recording.txt");
         try (PrintWriter writer = new PrintWriter(new FileWriter(saveFile, false))) {
-            writer.println("=== TELLY BRIDGE TICK-BY-TICK MATHEMATICAL LOG ===");
+            writer.println("=== TELLY BRIDGE TICK-BY-TICK DETAILED SPATIAL TELEMETRY LOG ===");
             writer.println("Initial Yaw: " + initialYaw);
             writer.println("Total Ticks Recorded: " + recordedTicks.size());
-            writer.println("-----------------------------------------------------------------------------------------------------");
-            writer.println("Tick | AirTicks | Ground | PosY    | MotionY | MotionXZ | Pitch  | Yaw    | YawDelta | W | S | RClick");
-            writer.println("-----------------------------------------------------------------------------------------------------");
+            writer.println("-----------------------------------------------------------------------------------------------------------------------------");
+            writer.println("Tick | AirTicks | Ground | PosX     | PosZ     | PosY    | MotionX | MotionZ | MotionY | MotionXZ | Pitch  | Yaw    | YawDelta | W | S | RClick");
+            writer.println("-----------------------------------------------------------------------------------------------------------------------------");
             for (String line : recordedTicks) {
                 writer.println(line);
             }
@@ -69,9 +69,13 @@ public class TellyRecorder extends Module {
         tickCounter++;
         int airTicks = mc.thePlayer.offGroundTicks;
         boolean onGround = mc.thePlayer.onGround;
+        double posX = mc.thePlayer.posX;
+        double posZ = mc.thePlayer.posZ;
         double posY = mc.thePlayer.posY;
+        double motionX = mc.thePlayer.motionX;
+        double motionZ = mc.thePlayer.motionZ;
         double motionY = mc.thePlayer.motionY;
-        double motionXZ = Math.hypot(mc.thePlayer.motionX, mc.thePlayer.motionZ);
+        double motionXZ = Math.hypot(motionX, motionZ);
         float pitch = mc.thePlayer.rotationPitch;
         float currentYaw = mc.thePlayer.rotationYaw;
         float yawDelta = currentYaw - initialYaw;
@@ -80,8 +84,8 @@ public class TellyRecorder extends Module {
         boolean pressS = Keyboard.isKeyDown(mc.gameSettings.keyBindBack.getKeyCode());
         boolean pressRClick = Mouse.isButtonDown(1);
 
-        String entry = String.format("%-4d | %-8d | %-6b | %-7.3f | %-7.3f | %-8.3f | %-6.1f | %-6.1f | %-8.1f | %-1b | %-1b | %-6b",
-                tickCounter, airTicks, onGround, posY, motionY, motionXZ, pitch, currentYaw, yawDelta, pressW, pressS, pressRClick);
+        String entry = String.format("%-4d | %-8d | %-6b | %-8.3f | %-8.3f | %-7.3f | %-7.3f | %-7.3f | %-7.3f | %-8.3f | %-6.1f | %-6.1f | %-8.1f | %-1b | %-1b | %-6b",
+                tickCounter, airTicks, onGround, posX, posZ, posY, motionX, motionZ, motionY, motionXZ, pitch, currentYaw, yawDelta, pressW, pressS, pressRClick);
 
         recordedTicks.add(entry);
     }
@@ -91,8 +95,8 @@ public class TellyRecorder extends Module {
         if (!isRecording || mc.thePlayer == null) return;
 
         ScaledResolution sr = new ScaledResolution(mc);
-        String infoText = String.format("RECORDING TELLY - Ticks: %d | Air: %d | Pitch: %.1f | DeltaYaw: %.1f",
-                tickCounter, mc.thePlayer.offGroundTicks, mc.thePlayer.rotationPitch, mc.thePlayer.rotationYaw - initialYaw);
+        String infoText = String.format("RECORDING TELLY - Ticks: %d | PosX: %.2f | PosZ: %.2f | Air: %d | Pitch: %.1f",
+                tickCounter, mc.thePlayer.posX, mc.thePlayer.posZ, mc.thePlayer.offGroundTicks, mc.thePlayer.rotationPitch);
 
         Fonts.interMedium.get(16).drawStringWithShadow(infoText, 10, sr.getScaledHeight() - 40, Color.GREEN.getRGB());
     }
