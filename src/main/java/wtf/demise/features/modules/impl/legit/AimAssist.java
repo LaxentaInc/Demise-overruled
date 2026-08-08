@@ -1,8 +1,11 @@
 package wtf.demise.features.modules.impl.legit;
 
 import net.minecraft.entity.EntityLivingBase;
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.util.MathHelper;
 import org.lwjglx.input.Mouse;
+import wtf.demise.Demise;
+import wtf.demise.features.modules.impl.combat.AntiBot;
 import wtf.demise.events.annotations.EventTarget;
 import wtf.demise.events.impl.player.UpdateEvent;
 import wtf.demise.events.impl.render.Render3DEvent;
@@ -23,6 +26,12 @@ public class AimAssist extends Module {
     private EntityLivingBase target;
     private final TimerUtils clickTimer = new TimerUtils();
 
+    // public telemetry fields for aimrecorder to read each tick
+    public float lastYawCorrection = 0;
+    public float lastPitchCorrection = 0;
+    public float lastCorrectionStrength = 0;
+    public boolean isActive = false;
+
     @Override
     public void onDisable() {
         target = null;
@@ -35,16 +44,20 @@ public class AimAssist extends Module {
             clickTimer.reset();
         }
 
-        // if onlyonclick is enabled, maintain active targeting for 300ms after last click release
-        // prevents micro-releases during fast cps clicking from resetting tracking
-        if (onlyOnClick.get() && clickTimer.hasTimeElapsed(300)) {
+        // if onlyonclick is enabled, maintain active targeting for 500ms after last click release
+        // 500ms covers even low cps clicking gaps without losing tracking mid-combo
+        if (onlyOnClick.get() && clickTimer.hasTimeElapsed(500)) {
             target = null;
+            lastYawCorrection = lastPitchCorrection = lastCorrectionStrength = 0;
+            isActive = false;
             return;
         }
 
         acquireTarget();
 
         if (target == null) {
+            lastYawCorrection = lastPitchCorrection = lastCorrectionStrength = 0;
+            isActive = false;
             return;
         }
 
@@ -67,63 +80,115 @@ public class AimAssist extends Module {
         float pitchError = idealPitch - mc.thePlayer.rotationPitch;
         float totalError = (float) Math.hypot(yawError, pitchError);
 
-        // disengage if target is wildly off-screen (> 60 degrees total angular distance)
-        if (totalError > 60.0f) {
+        // no hard cutoff - aim assist works across entire field of view
+        // only skip if target is literally behind the player (> 160 degrees off)
+        // this covers quake pro fov (110) plus generous peripheral margin
+        if (totalError > 160.0f) {
+            lastYawCorrection = lastPitchCorrection = lastCorrectionStrength = 0;
+            isActive = false;
             return;
         }
 
         // --- adaptive correction strength ---
-        // scales from gentle nudge when close to aggressive pull when far off
-        // this prevents the "locking" feel at small errors and the "slow" feel at large errors
+        // uses a smooth curve that ramps up quickly for large errors
+        // and eases off gently for small errors to avoid jitter
         //
         // at 0 degrees error: factor ~0 (no correction needed)
-        // at 10 degrees error: factor ~0.35 (moderate pull)
-        // at 30 degrees error: factor ~0.65 (strong pull)
-        // at 60 degrees error: factor ~0.85 (near full tracking)
-        float normalizedError = Math.min(totalError / 60.0f, 1.0f);
-        float correctionStrength = (float) (1.0 - Math.pow(1.0 - normalizedError, 2.5));
+        // at 5 degrees: ~0.08 (gentle nudge within body hitbox area)
+        // at 15 degrees: ~0.22 (moderate tracking)
+        // at 40 degrees: ~0.50 (strong pull for off-screen targets)
+        // at 80+ degrees: ~0.75+ (aggressive acquisition)
+        float normalizedError = Math.min(totalError / 90.0f, 1.0f);
+        float correctionStrength = (float) (1.0 - Math.pow(1.0 - normalizedError, 2.0));
+        lastCorrectionStrength = correctionStrength;
 
-        // apply correction as a fraction of the total error
-        // this is additive to mouse input - it doesn't replace or override mouse movement
-        // the player's own mouse delta is applied normally by the engine before this runs
-        float yawCorrection = yawError * correctionStrength * 0.45f;
-        float pitchCorrection = pitchError * correctionStrength * 0.35f;
+        // scale correction by error to produce the actual yaw/pitch delta
+        // 0.4 yaw and 0.3 pitch give smooth tracking without overshooting
+        float yawCorrection = yawError * correctionStrength * 0.4f;
+        float pitchCorrection = pitchError * correctionStrength * 0.3f;
 
-        // clamp maximum correction per tick to prevent jarring snaps
-        // 8 degrees/tick at 20tps = 160 degrees/sec max correction rate (enough for fast strafing)
-        yawCorrection = MathHelper.clamp_float(yawCorrection, -8.0f, 8.0f);
-        pitchCorrection = MathHelper.clamp_float(pitchCorrection, -4.0f, 4.0f);
+        // max correction rate: 12 deg/tick = 240 deg/sec yaw, 6 deg/tick = 120 deg/sec pitch
+        // fast enough to track strafing at close range while preventing snap-like movement
+        yawCorrection = MathHelper.clamp_float(yawCorrection, -12.0f, 12.0f);
+        pitchCorrection = MathHelper.clamp_float(pitchCorrection, -6.0f, 6.0f);
 
-        // deadzone: if error is tiny (< 2 degrees), scale correction down to near-zero
-        // prevents the aim from "buzzing" or micro-oscillating around the target center
-        if (totalError < 2.0f) {
-            float deadzoneFactor = totalError / 2.0f;
+        // soft deadzone: errors below 1.5 degrees get proportionally reduced corrections
+        // prevents micro-oscillation around target center without fully freezing the aim
+        if (totalError < 1.5f) {
+            float deadzoneFactor = totalError / 1.5f;
             yawCorrection *= deadzoneFactor;
             pitchCorrection *= deadzoneFactor;
         }
 
         // apply correction directly to the player's physical camera
-        // this blends seamlessly with mouse input because it's additive, not replacing
+        // additive blending: mouse input from the engine is already applied before this hook,
+        // so this adds on top of the player's own aiming without replacing or blocking it
+        // store final corrections for telemetry before applying
+        lastYawCorrection = yawCorrection;
+        lastPitchCorrection = pitchCorrection;
+        isActive = true;
+
         mc.thePlayer.rotationYaw += yawCorrection;
         mc.thePlayer.rotationPitch += pitchCorrection;
         mc.thePlayer.rotationPitch = MathHelper.clamp_float(mc.thePlayer.rotationPitch, -90.0f, 90.0f);
     }
 
     private void acquireTarget() {
-        EntityLivingBase newTarget = PlayerUtils.getTarget(4.5f, teamCheck.get());
+        // search within 6 blocks - covers all realistic pvp engagement distances
+        // the recorder showed meaningful data at 5-8 blocks, 4.5 was too restrictive
+        EntityLivingBase bestTarget = null;
+        float bestAngle = Float.MAX_VALUE;
+        double bestDist = Double.MAX_VALUE;
 
-        // sticky targeting: don't switch to a new target unless it's significantly closer
-        // prevents aim from jumping between two equidistant players
-        if (target != null && newTarget != null && newTarget != target && !target.isDead) {
-            double currentDist = PlayerUtils.getDistanceToEntityBox(target);
-            double newDist = PlayerUtils.getDistanceToEntityBox(newTarget);
+        if (mc.theWorld == null) {
+            target = null;
+            return;
+        }
 
-            if (currentDist - newDist < 0.6) {
-                newTarget = target;
+        for (EntityPlayer entity : mc.theWorld.playerEntities) {
+            if (entity == mc.thePlayer) continue;
+            if (entity.isDead) continue;
+            if (teamCheck.get() && PlayerUtils.isInTeam(entity)) continue;
+
+            // check if antibot considers this entity a bot
+            AntiBot antiBot = (AntiBot) Demise.INSTANCE.getModuleManager().getModule(AntiBot.class);
+            if (antiBot.isEnabled() && antiBot.bots.contains(entity)) continue;
+
+            double dist = PlayerUtils.getDistanceToEntityBox(entity);
+            if (dist > 6.0) continue;
+
+            // compute angular distance from crosshair to this entity's chest
+            float[] rots = RotationUtils.getRotations(entity.posX, entity.posY + entity.getEyeHeight() * 0.65, entity.posZ);
+            float yawDiff = Math.abs(RotationUtils.getAngleDifference(rots[0], mc.thePlayer.rotationYaw));
+            float pitchDiff = Math.abs(rots[1] - mc.thePlayer.rotationPitch);
+            float angleDist = (float) Math.hypot(yawDiff, pitchDiff);
+
+            // pick the target closest to crosshair center
+            // if angles are very similar (within 5 degrees), prefer the physically closer one
+            if (bestTarget == null || angleDist < bestAngle - 5.0f || (angleDist < bestAngle + 5.0f && dist < bestDist)) {
+                bestTarget = entity;
+                bestAngle = angleDist;
+                bestDist = dist;
             }
         }
 
-        target = newTarget;
+        // sticky targeting: don't switch away from current target unless the new one is
+        // significantly better (> 15 degrees closer to crosshair or current target died/despawned)
+        if (target != null && !target.isDead && bestTarget != null && bestTarget != target) {
+            float[] currentRots = RotationUtils.getRotations(target.posX, target.posY + target.getEyeHeight() * 0.65, target.posZ);
+            float currentAngle = (float) Math.hypot(
+                Math.abs(RotationUtils.getAngleDifference(currentRots[0], mc.thePlayer.rotationYaw)),
+                Math.abs(currentRots[1] - mc.thePlayer.rotationPitch)
+            );
+
+            double currentDist = PlayerUtils.getDistanceToEntityBox(target);
+            if (currentDist <= 6.0 && bestAngle > currentAngle - 15.0f) {
+                // current target is still viable and new target isn't dramatically better
+                bestTarget = target;
+            }
+        }
+
+        target = bestTarget;
     }
 
     @EventTarget

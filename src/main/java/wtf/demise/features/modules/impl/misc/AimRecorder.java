@@ -11,6 +11,7 @@ import wtf.demise.features.modules.Module;
 import wtf.demise.features.modules.ModuleInfo;
 import wtf.demise.gui.font.Fonts;
 import wtf.demise.utils.misc.ChatUtils;
+import wtf.demise.features.modules.impl.legit.AimAssist;
 import wtf.demise.utils.player.PlayerUtils;
 import wtf.demise.utils.player.rotation.RotationHandler;
 import wtf.demise.utils.player.rotation.RotationUtils;
@@ -72,6 +73,10 @@ public class AimRecorder extends Module {
             writer.println("  RHYaw   = rotationhandler's internal current yaw (server/spoofed)");
             writer.println("  RHPit   = rotationhandler's internal current pitch");
             writer.println("  RHAct   = rotationhandler enabled flag (true = aim assist is actively controlling)");
+            writer.println("  AAAct   = aim assist actively applied a correction this tick");
+            writer.println("  AAYawC  = aim assist yaw correction applied");
+            writer.println("  AAPitC  = aim assist pitch correction applied");
+            writer.println("  AAStr   = aim assist correction strength multiplier");
             writer.println("  Dist    = distance to target hitbox");
             writer.println("  TgtVel  = target horizontal velocity (blocks/tick)");
             writer.println("  TgtY    = target posY");
@@ -82,9 +87,9 @@ public class AimRecorder extends Module {
             writer.println("  TgtGnd  = target on ground");
             writer.println("  PlyMXZ  = player horizontal speed");
             writer.println("  MSens   = mouse sensitivity setting value");
-            writer.println("--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------");
-            writer.println("Tick | PlyYaw  | PlyPit | dYaw   | dPitch | IdlYaw  | IdlPit | ErrYaw | ErrPit | ErrTot | RHYaw   | RHPit  | RHAct | Dist  | TgtVel | TgtY    | TgtHT | PlyHT | LClick | PlyGnd | TgtGnd | PlyMXZ | MSens");
-            writer.println("--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------");
+            writer.println("------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------");
+            writer.println("Tick | PlyYaw  | PlyPit | dYaw   | dPitch | IdlYaw  | IdlPit | ErrYaw | ErrPit | ErrTot | RHYaw   | RHPit  | RHAct | AAAct | AAYawC | AAPitC | AAStr | Dist  | TgtVel | TgtY    | TgtHT | PlyHT | LClick | PlyGnd | TgtGnd | PlyMXZ | MSens");
+            writer.println("------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------");
             for (String line : recordedTicks) {
                 writer.println(line);
             }
@@ -155,14 +160,22 @@ public class AimRecorder extends Module {
         // --- mouse sensitivity (raw setting value 0-1) ---
         float mouseSens = mc.gameSettings.mouseSensitivity;
 
+        // --- aim assist internal telemetry ---
+        AimAssist aimAssist = (AimAssist) Demise.INSTANCE.getModuleManager().getModule(AimAssist.class);
+        boolean aaActive = aimAssist != null && aimAssist.isActive;
+        float aaYawC = aimAssist != null ? aimAssist.lastYawCorrection : 0;
+        float aaPitC = aimAssist != null ? aimAssist.lastPitchCorrection : 0;
+        float aaStr = aimAssist != null ? aimAssist.lastCorrectionStrength : 0;
+
         String entry = String.format(
-            "%-4d | %-7.1f | %-6.1f | %-6.2f | %-6.2f | %-7.1f | %-6.1f | %-6.2f | %-6.2f | %-6.2f | %-7.1f | %-6.1f | %-5b | %-5.2f | %-6.3f | %-7.2f | %-5d | %-5d | %-6b | %-6b | %-6b | %-6.3f | %-5.2f",
+            "%-4d | %-7.1f | %-6.1f | %-6.2f | %-6.2f | %-7.1f | %-6.1f | %-6.2f | %-6.2f | %-6.2f | %-7.1f | %-6.1f | %-5b | %-5b | %-6.2f | %-6.2f | %-5.2f | %-5.2f | %-6.3f | %-7.2f | %-5d | %-5d | %-6b | %-6b | %-6b | %-6.3f | %-5.2f",
             tickCounter,
             playerYaw, playerPitch,
             deltaYaw, deltaPitch,
             idealYaw, idealPitch,
             errYaw, errPitch, errTotal,
             rhYaw, rhPitch, rhActive,
+            aaActive, aaYawC, aaPitC, aaStr,
             distance, targetVel, targetY,
             targetHurtTime, playerHurtTime,
             leftClick, playerOnGround, targetOnGround,
