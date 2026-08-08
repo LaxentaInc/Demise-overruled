@@ -20,6 +20,7 @@ import wtf.demise.utils.render.RenderUtils;
 @ModuleInfo(name = "AimAssist", description = "Assists in aiming smoothly.")
 public class AimAssist extends Module {
     private final BoolValue onlyOnClick = new BoolValue("Only on click", true, this);
+    private final BoolValue weaponOnly = new BoolValue("Weapon Only", true, this);
     private final BoolValue teamCheck = new BoolValue("Team check", false, this);
     private final BoolValue targetESP = new BoolValue("Target ESP", false, this);
 
@@ -39,6 +40,17 @@ public class AimAssist extends Module {
 
     @EventTarget
     public void onUpdate(UpdateEvent e) {
+        // ensure player is holding a weapon if setting is enabled
+        if (weaponOnly.get()) {
+            net.minecraft.item.ItemStack heldItem = mc.thePlayer.getHeldItem();
+            if (heldItem == null || !(heldItem.getItem() instanceof net.minecraft.item.ItemSword || heldItem.getItem() instanceof net.minecraft.item.ItemAxe)) {
+                target = null;
+                lastYawCorrection = lastPitchCorrection = lastCorrectionStrength = 0;
+                isActive = false;
+                return;
+            }
+        }
+
         // reset click timer whenever attack button is down
         if (Mouse.isButtonDown(0)) {
             clickTimer.reset();

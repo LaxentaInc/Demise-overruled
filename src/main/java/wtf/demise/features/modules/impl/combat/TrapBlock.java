@@ -95,6 +95,17 @@ public class TrapBlock extends Module {
 
             double dist = PlayerUtils.getDistanceToEntityBox(entity);
             if (dist >= minDistance.get() && dist <= maxDistance.get()) {
+                
+                // 1. Must be in front of us (within 90 degrees of our crosshair)
+                float[] rots = RotationUtils.getRotations(entity.posX, entity.posY, entity.posZ);
+                float yawDiff = Math.abs(RotationUtils.getAngleDifference(mc.thePlayer.rotationYaw, rots[0]));
+                if (yawDiff > 90) continue;
+                
+                // 2. Must be approaching us (distance is decreasing or they are very close)
+                double prevDist = Math.hypot(mc.thePlayer.lastTickPosX - entity.lastTickPosX, mc.thePlayer.lastTickPosZ - entity.lastTickPosZ);
+                double currentDist = Math.hypot(mc.thePlayer.posX - entity.posX, mc.thePlayer.posZ - entity.posZ);
+                if (currentDist > prevDist + 0.05) continue; // moving away from us
+
                 if (dist < minDistanceFound) {
                     minDistanceFound = dist;
                     bestTarget = entity;
@@ -107,36 +118,46 @@ public class TrapBlock extends Module {
     private List<BlockPos> calculateTrapPositions(EntityLivingBase target) {
         List<BlockPos> positions = new ArrayList<>();
         
-        // estimate direction target is moving
-        double velX = target.posX - target.lastTickPosX;
-        double velZ = target.posZ - target.lastTickPosZ;
-        
-        // if standing still, use their look direction
-        if (Math.hypot(velX, velZ) < 0.05) {
-            velX = -MathHelper.sin(target.rotationYaw / 180.0F * (float) Math.PI);
-            velZ = MathHelper.cos(target.rotationYaw / 180.0F * (float) Math.PI);
-        }
+        // calculate direction from target straight to the player (our face)
+        double dirX = mc.thePlayer.posX - target.posX;
+        double dirZ = mc.thePlayer.posZ - target.posZ;
 
-        // normalize
-        double length = Math.hypot(velX, velZ);
+        // normalize direction
+        double length = Math.hypot(dirX, dirZ);
         if (length > 0) {
-            velX /= length;
-            velZ /= length;
+            dirX /= length;
+            dirZ /= length;
         }
 
-        // find the block they are roughly going to step on next
-        int targetX = MathHelper.floor_double(target.posX + velX * 1.5);
-        int targetY = MathHelper.floor_double(target.posY);
-        int targetZ = MathHelper.floor_double(target.posZ + velZ * 1.5);
+        // find the center block directly in front of them along the path to us
+        int centerX = MathHelper.floor_double(target.posX + dirX * 1.5);
+        int centerY = MathHelper.floor_double(target.posY);
+        int centerZ = MathHelper.floor_double(target.posZ + dirZ * 1.5);
+        
+        // calculate perpendicular vectors for left and right (wall width)
+        // if forward is (x, z), perpendicular is (-z, x)
+        double perpX = -dirZ;
+        double perpZ = dirX;
 
-        // construct a line of blocks straight ahead
-        for (int i = 0; i < blocksToPlace.get(); i++) {
-            BlockPos pos = new BlockPos(targetX + (velX * i), targetY, targetZ + (velZ * i));
-            
+        // determine offsets based on how many blocks to place
+        int blocks = (int) blocksToPlace.get();
+        List<BlockPos> wallTargets = new ArrayList<>();
+        
+        if (blocks >= 1) {
+            wallTargets.add(new BlockPos(centerX, centerY, centerZ)); // Center
+        }
+        if (blocks >= 2) {
+            wallTargets.add(new BlockPos(MathHelper.floor_double(centerX + perpX), centerY, MathHelper.floor_double(centerZ + perpZ))); // Right/Left 1
+        }
+        if (blocks >= 3) {
+            wallTargets.add(new BlockPos(MathHelper.floor_double(centerX - perpX), centerY, MathHelper.floor_double(centerZ - perpZ))); // Opposite side
+        }
+
+        for (BlockPos pos : wallTargets) {
             // check if we can place here (must be air, and block below must be solid)
             if (mc.theWorld.getBlockState(pos).getBlock() instanceof BlockAir) {
                 Block blockBelow = mc.theWorld.getBlockState(pos.down()).getBlock();
-                if (!(blockBelow instanceof BlockAir)) {
+                if (!(blockBelow instanceof BlockAir) && !positions.contains(pos)) {
                     positions.add(pos);
                 }
             }
@@ -165,18 +186,15 @@ public class TrapBlock extends Module {
             mc.thePlayer.rotationYaw = rots[0];
             mc.thePlayer.rotationPitch = rots[1];
             
-            // force update raytrace to new camera angle immediately
-            mc.entityRenderer.getMouseOver(1.0f);
-            
-            if (mc.objectMouseOver != null && mc.objectMouseOver.typeOfHit == net.minecraft.util.MovingObjectPosition.MovingObjectType.BLOCK) {
-                if (mc.objectMouseOver.getBlockPos().equals(supportBlock)) {
-                    // physical click
-                    if (mc.playerController.onPlayerRightClick(mc.thePlayer, mc.theWorld, mc.thePlayer.getHeldItem(), mc.objectMouseOver.getBlockPos(), mc.objectMouseOver.sideHit, mc.objectMouseOver.hitVec)) {
-                        mc.thePlayer.swingItem();
-                        mc.getNetHandler().addToSendQueue(new C0APacketAnimation());
-                        placed = true;
-                    }
-                }
+            // physical click bypassing raytrace strictness
+            Vec3 hitVec = new Vec3(supportBlock.getX() + 0.5, supportBlock.getY() + 1.0, supportBlock.getZ() + 0.5);
+            if (mc.playerController.onPlayerRightClick(mc.thePlayer, mc.theWorld, mc.thePlayer.inventory.getStackInSlot(blockSlot), supportBlock, EnumFacing.UP, hitVec)) {
+                mc.thePlayer.swingItem();
+                mc.getNetHandler().addToSendQueue(new C0APacketAnimation());
+                placed = true;
+                wtf.demise.utils.misc.ChatUtils.sendMessageClient("TrapBlock: Placed at " + pos.getX() + ", " + pos.getZ());
+            } else {
+                wtf.demise.utils.misc.ChatUtils.sendMessageClient("TrapBlock: Failed to place at " + pos.getX() + ", " + pos.getZ());
             }
         }
 
