@@ -12,29 +12,52 @@ import wtf.demise.features.values.impl.SliderValue;
 import wtf.demise.utils.math.TimerUtils;
 import wtf.demise.utils.player.PlayerUtils;
 
-@ModuleInfo(name = "HitSelect", description = "Reactive hit selection - waits to get hit first, then retaliates with precision.")
+@ModuleInfo(name = "HitSelect", description = "Phase-based hit selection with health awareness and combo pacing.")
 public class HitSelect extends Module {
-    // max ticks to wait in range before force-allowing a swing (prevents stalemate passivity)
-    private final SliderValue maxWaitTicks = new SliderValue("Max wait ticks", 10, 3, 20, this);
-    // how many ticks after our retaliation hit to block clicking again (allows combo follow-through)
-    private final SliderValue comboWindowTicks = new SliderValue("Combo window", 3, 1, 8, this);
-    private final SliderValue engageRange = new SliderValue("Engage range", 3.5f, 2.0f, 5.0f, 0.1f, this);
-    private final BoolValue teamCheck = new BoolValue("Team check", false, this);
-    private final BoolValue wTapOnRetaliate = new BoolValue("W-Tap on retaliate", true, this);
 
-    // public field consumed by minecraft.clickmouse() to suppress left clicks
+    // --- settings ---
+    // max ticks to wait in range before force-initiating (anti-stalemate)
+    private final SliderValue maxWaitTicks = new SliderValue("Max wait ticks", 10, 3, 20, this);
+    // engage range for hit selection to activate
+    private final SliderValue engageRange = new SliderValue("Engage range", 3.5f, 2.0f, 5.0f, 0.1f, this);
+    // below this HP, skip opening phase entirely and just swing
+    private final SliderValue healthThreshold = new SliderValue("Health threshold", 16, 4, 20, 1, this);
+    // whether to pace clicks around target i-frames during combo sustain
+    private final BoolValue comboPacing = new BoolValue("Combo pacing", true, this);
+    // w-tap on the first retaliation hit for extra knockback
+    private final BoolValue wTapOnRetaliate = new BoolValue("W-Tap on retaliate", true, this);
+    private final BoolValue teamCheck = new BoolValue("Team check", false, this);
+
+    // --- public field consumed by minecraft.clickmouse() to suppress left clicks ---
     public boolean blockClicking;
 
-    // state machine tracking
-    private EntityLivingBase lastTarget;
-    private int ticksInRange;           // how many ticks we've been within engage range of a target
-    private int lastPlayerHurtTime;     // previous tick's player hurttime to detect rising edge
-    private int lastTargetHurtTime;     // previous tick's target hurttime to detect rising edge
-    private boolean retaliationAllowed; // true when we detected opponent hit us and we should swing back
-    private int retaliationTicksLeft;   // countdown after our hit lands to keep allowing clicks (combo window)
-    private boolean wTapThisTick;       // flag for movement input to apply w-tap release
+    // --- combat phases ---
+    private enum Phase {
+        OPENING,       // waiting for opponent to hit first (or skipping if low hp)
+        COMBO_SUSTAIN, // we landed a hit, stay aggressive with pacing
+        TRADE          // opponent hit us mid-combo, burst then re-establish
+    }
 
-    // idle timeout timer for when nobody is interacting - resets state to avoid stale data
+    // --- state tracking ---
+    private Phase currentPhase = Phase.OPENING;
+    private EntityLivingBase lastTarget;
+    private int ticksInRange;
+    private int lastPlayerHurtTime;
+    private int lastTargetHurtTime;
+    private boolean wTapThisTick;
+
+    // combo sustain tracking
+    private int comboHitsLanded;          // how many consecutive hits we've landed in this combo
+    private int ticksSinceOurLastHit;     // ticks since we last damaged the target
+
+    // trade phase tracking
+    private int tradeTicksLeft;           // burst window during trade phase
+
+    // disengage grace: don't reset state if target leaves range briefly (strafing)
+    private final TimerUtils disengageTimer = new TimerUtils();
+    private boolean wasInRange;
+
+    // idle timeout: reset everything if nobody is interacting
     private final TimerUtils idleTimer = new TimerUtils();
 
     @Override
@@ -50,14 +73,18 @@ public class HitSelect extends Module {
 
     private void resetState() {
         blockClicking = false;
+        currentPhase = Phase.OPENING;
         lastTarget = null;
         ticksInRange = 0;
         lastPlayerHurtTime = 0;
         lastTargetHurtTime = 0;
-        retaliationAllowed = false;
-        retaliationTicksLeft = 0;
         wTapThisTick = false;
+        comboHitsLanded = 0;
+        ticksSinceOurLastHit = 0;
+        tradeTicksLeft = 0;
+        wasInRange = false;
         idleTimer.reset();
+        disengageTimer.reset();
     }
 
     @EventTarget
@@ -69,102 +96,193 @@ public class HitSelect extends Module {
             return;
         }
 
-        // if target changed, reset our tracking state for the new opponent
+        // if target changed, reset state for the new opponent
         if (target != lastTarget) {
             resetState();
             lastTarget = target;
         }
 
-        // calculate whether opponent is facing us (within ~120 degree cone)
-        // uses the angle between the vector from target->player and target's yaw head direction
+        // check if opponent is facing us (within ~120 degree cone)
         float angleToUs = (float) (MathHelper.atan2(mc.thePlayer.posZ - target.posZ, mc.thePlayer.posX - target.posX) * 180.0 / Math.PI - 90.0);
         float facingDiff = Math.abs(MathHelper.wrapAngleTo180_float(angleToUs - target.rotationYawHead));
 
         if (facingDiff > 120) {
-            // target isn't facing us at all - no combat interaction, don't block clicks
+            // target isn't facing us - no combat, allow clicks freely
             blockClicking = false;
             ticksInRange = 0;
             return;
         }
 
         double distance = PlayerUtils.getDistanceToEntityBox(target);
-        boolean playerHurt = mc.thePlayer.hurtTime > 0;
-        boolean targetHurt = target.hurtTime > 0;
 
-        // detect rising edge: player just got hit this tick (hurttime went from 0 to >0)
+        // detect rising edges for hit detection
         boolean playerJustGotHit = mc.thePlayer.hurtTime > lastPlayerHurtTime;
-        // detect rising edge: target just got hit this tick
         boolean targetJustGotHit = target.hurtTime > lastTargetHurtTime;
 
-        // update previous-tick values for next iteration's edge detection
         lastPlayerHurtTime = mc.thePlayer.hurtTime;
         lastTargetHurtTime = target.hurtTime;
 
-        // reset idle timer whenever either player is interacting (hurt or being hurt)
-        if (playerHurt || targetHurt) {
+        // reset idle timer on any combat interaction
+        if (mc.thePlayer.hurtTime > 0 || target.hurtTime > 0) {
             idleTimer.reset();
         }
 
-        // if nobody has been hurt for 500ms+, reset state to prevent stale combo flags
-        if (idleTimer.hasTimeElapsed(500)) {
-            retaliationAllowed = false;
-            retaliationTicksLeft = 0;
+        // if nobody has interacted for 800ms, go back to opening phase
+        if (idleTimer.hasTimeElapsed(800)) {
+            currentPhase = Phase.OPENING;
+            comboHitsLanded = 0;
+            ticksSinceOurLastHit = 0;
             ticksInRange = 0;
         }
 
-        // ---- core hit-select state machine ----
+        // track our hit timing
+        if (targetJustGotHit) {
+            ticksSinceOurLastHit = 0;
+        } else {
+            ticksSinceOurLastHit++;
+        }
 
+        // --- range handling with disengage grace ---
         if (distance < engageRange.get()) {
             ticksInRange++;
-
-            // state 1: we are in a combo follow-through window after landing our retaliation hit
-            if (retaliationTicksLeft > 0) {
-                retaliationTicksLeft--;
-                blockClicking = false;
-                return;
-            }
-
-            // state 2: we just got hit by the opponent - allow immediate retaliation swing
-            if (playerJustGotHit && !targetHurt) {
-                retaliationAllowed = true;
-                blockClicking = false;
-                if (wTapOnRetaliate.get()) {
-                    wTapThisTick = true;
-                }
-                return;
-            }
-
-            // state 3: retaliation was allowed and we just landed our hit - start combo window
-            if (retaliationAllowed && targetJustGotHit) {
-                retaliationAllowed = false;
-                retaliationTicksLeft = (int) comboWindowTicks.get();
-                blockClicking = false;
-                return;
-            }
-
-            // state 4: retaliation is active but we haven't connected yet - keep allowing clicks
-            if (retaliationAllowed) {
-                blockClicking = false;
-                return;
-            }
-
-            // state 5: max wait exceeded - force allow clicking to prevent standing still getting slimed
-            // this is the anti-stalemate: if opponent won't swing, we initiate after maxWaitTicks
-            if (ticksInRange >= maxWaitTicks.get()) {
-                retaliationAllowed = true;
-                blockClicking = false;
-                return;
-            }
-
-            // state 6: default waiting state - block clicks until opponent swings at us
-            blockClicking = true;
-
+            wasInRange = true;
+            disengageTimer.reset();
         } else {
-            // outside engage range - no hit selection needed, allow normal clicking
+            // outside range - check grace period (500ms to handle strafing/slight disengage)
+            if (wasInRange && !disengageTimer.hasTimeElapsed(500)) {
+                // grace period active, keep current state but don't block clicks
+                // (can't hit them anyway, they're out of range)
+                blockClicking = false;
+                return;
+            }
+            // grace expired or was never in range
             blockClicking = false;
             ticksInRange = 0;
-            retaliationAllowed = false;
-            retaliationTicksLeft = 0;
+            return;
+        }
+
+        // --- health check: skip opening phase if low HP ---
+        boolean lowHealth = mc.thePlayer.getHealth() < healthThreshold.get();
+
+        // =====================================================
+        //  PHASE STATE MACHINE
+        // =====================================================
+
+        switch (currentPhase) {
+
+            case OPENING: {
+                // low HP: don't wait, swing immediately
+                if (lowHealth) {
+                    blockClicking = false;
+                    // if we land a hit, transition to combo sustain
+                    if (targetJustGotHit) {
+                        currentPhase = Phase.COMBO_SUSTAIN;
+                        comboHitsLanded = 1;
+                    }
+                    return;
+                }
+
+                // normal HP: wait for opponent to swing first
+                if (playerJustGotHit) {
+                    // opponent hit us - retaliate immediately
+                    blockClicking = false;
+                    if (wTapOnRetaliate.get()) {
+                        wTapThisTick = true;
+                    }
+                    // if our retaliation lands this same tick or next few, transition
+                    if (targetJustGotHit) {
+                        currentPhase = Phase.COMBO_SUSTAIN;
+                        comboHitsLanded = 1;
+                    }
+                    return;
+                }
+
+                // anti-stalemate: if we've waited too long, just swing
+                if (ticksInRange >= maxWaitTicks.get()) {
+                    blockClicking = false;
+                    if (targetJustGotHit) {
+                        currentPhase = Phase.COMBO_SUSTAIN;
+                        comboHitsLanded = 1;
+                    }
+                    return;
+                }
+
+                // default: block clicks, wait for opponent
+                blockClicking = true;
+                break;
+            }
+
+            case COMBO_SUSTAIN: {
+                // we're in an active combo. stay aggressive.
+
+                // if WE get hit during our combo, transition to trade phase
+                if (playerJustGotHit) {
+                    currentPhase = Phase.TRADE;
+                    tradeTicksLeft = 5; // 5-tick burst window
+                    blockClicking = false;
+                    return;
+                }
+
+                // if we landed another hit, count it
+                if (targetJustGotHit) {
+                    comboHitsLanded++;
+                    ticksSinceOurLastHit = 0;
+                }
+
+                // if we haven't hit them in 15 ticks (750ms), we lost the combo
+                if (ticksSinceOurLastHit > 15) {
+                    currentPhase = Phase.OPENING;
+                    comboHitsLanded = 0;
+                    ticksInRange = 0;
+                    blockClicking = true;
+                    return;
+                }
+
+                // combo pacing: suppress clicks while target has i-frames
+                if (comboPacing.get() && target.hurtTime > 0) {
+                    // target still in i-frames from our last hit.
+                    // suppress clicks - hitting them now is wasted input.
+                    // allow click through when hurttime is 1 (about to expire)
+                    // so the click registers on the exact tick i-frames drop.
+                    if (target.hurtTime > 2) {
+                        blockClicking = true;
+                    } else {
+                        // hurttime 1-2: i-frames about to expire, let click through
+                        blockClicking = false;
+                    }
+                } else {
+                    // no i-frames active or pacing disabled, allow click
+                    blockClicking = false;
+                }
+                break;
+            }
+
+            case TRADE: {
+                // opponent hit us mid-combo. burst for a few ticks, then re-establish.
+                tradeTicksLeft--;
+                blockClicking = false; // full aggression during burst
+
+                if (targetJustGotHit) {
+                    // we landed a hit during trade - go back to combo sustain
+                    currentPhase = Phase.COMBO_SUSTAIN;
+                    comboHitsLanded++;
+                    return;
+                }
+
+                if (tradeTicksLeft <= 0) {
+                    // burst expired without landing a hit
+                    if (lowHealth) {
+                        // low HP: stay aggressive, go to combo sustain anyway
+                        currentPhase = Phase.COMBO_SUSTAIN;
+                    } else {
+                        // normal HP: go back to opening to re-establish first-hit advantage
+                        currentPhase = Phase.OPENING;
+                        ticksInRange = 0;
+                        comboHitsLanded = 0;
+                    }
+                }
+                break;
+            }
         }
     }
 
@@ -177,3 +295,4 @@ public class HitSelect extends Module {
         }
     }
 }
+
