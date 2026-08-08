@@ -29,7 +29,7 @@ public class ModuleManager {
     private static final Set<Class<? extends Module>> LEGIT_MODULES = Set.of(
             AimAssist.class, AutoClicker.class, AutoHeal.class, AutoRod.class, AutoWeapon.class, BackTrack.class,
             CombatHelper.class, HitBox.class, HitSelect.class, JumpReset.class, LegitScaffold.class, NoHitDelay.class,
-            Reach.class, SprintReset.class
+            Reach.class, SprintReset.class, LegitStrafe.class
     );
 
     private static final Set<Class<? extends Module>> MOVEMENT_MODULES = Set.of(

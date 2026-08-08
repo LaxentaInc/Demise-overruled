@@ -25,6 +25,7 @@ public class AimAssist extends Module {
     private final BoolValue targetESP = new BoolValue("Target ESP", false, this);
 
     private EntityLivingBase target;
+    public EntityLivingBase getTarget() { return target; }
     private final TimerUtils clickTimer = new TimerUtils();
 
     // public telemetry fields for aimrecorder to read each tick
