@@ -30,6 +30,11 @@ public class TellyBridge extends Module {
     private double anchorZ;
     private double initialY;
 
+    // per-jump cached jitter values to prevent per-tick 20hz camera noise
+    private float jumpYawJitter = 0.0f;
+    private float jumpPitchJitter = 0.0f;
+    private Vec3 jumpHitVecOffset = new Vec3(0, 0, 0);
+
     @Override
     public void onEnable() {
         if (mc.thePlayer == null) return;
@@ -62,18 +67,17 @@ public class TellyBridge extends Module {
 
         boolean onGround = mc.thePlayer.onGround;
 
-        // hard clamp off-axis velocity to zero out any side drift completely
-        int absYaw = Math.abs(Math.round(initialYaw)) % 360;
-        if (absYaw == 0 || absYaw == 180) {
-            mc.thePlayer.motionX = 0.0;
-        } else {
-            mc.thePlayer.motionZ = 0.0;
+        // update initialY when on ground to allow starting a new bridge plane if the player dropped down
+        if (onGround) {
+            initialY = Math.floor(mc.thePlayer.posY - 1.0);
         }
 
         // check if player is approaching a block edge on ground to initiate jump
+        int absYaw = Math.abs(Math.round(initialYaw)) % 360;
         if (onGround && MoveUtil.isMoving()) {
-            double nextX = mc.thePlayer.posX + -Math.sin(Math.toRadians(initialYaw)) * 0.15;
-            double nextZ = mc.thePlayer.posZ + Math.cos(Math.toRadians(initialYaw)) * 0.15;
+            double threshold = 0.15 + (Math.random() * 0.1); // 0.15 to 0.25 randomized jump edge
+            double nextX = mc.thePlayer.posX + -Math.sin(Math.toRadians(initialYaw)) * threshold;
+            double nextZ = mc.thePlayer.posZ + Math.cos(Math.toRadians(initialYaw)) * threshold;
             BlockPos edgePos = new BlockPos(nextX, mc.thePlayer.posY - 1, nextZ);
             boolean isAirEdge = mc.theWorld.getBlockState(edgePos).getBlock() instanceof BlockAir;
 
@@ -84,6 +88,11 @@ public class TellyBridge extends Module {
                     anchorZ = Math.floor(mc.thePlayer.posZ) + 0.5;
                 }
 
+                // generate per-jump jitter once at jump initiation
+                jumpYawJitter = (float) ((Math.random() - 0.5) * 2.0);
+                jumpPitchJitter = (float) ((Math.random() - 0.5) * 1.5);
+                jumpHitVecOffset = new Vec3((Math.random() - 0.5) * 0.08, (Math.random() - 0.5) * 0.08, (Math.random() - 0.5) * 0.08);
+
                 mc.thePlayer.jump();
                 mc.thePlayer.setSprinting(true);
             }
@@ -91,32 +100,40 @@ public class TellyBridge extends Module {
 
         int airTicks = mc.thePlayer.offGroundTicks;
 
+        // cache block data once per tick to guarantee consistency
+        BlockData cachedBlockData = (!onGround && airTicks >= 3) ? findBlockData() : null;
+
         if (!onGround) {
             if (airTicks >= 1 && airTicks <= 2) {
                 // human telly phase 1: leap forward facing movement heading cleanly
                 targetYaw = initialYaw;
                 targetPitch = 20.0f;
-            } else if (airTicks >= 3 && airTicks <= 6) {
-                // human telly phase 2: flick camera backward smoothly
+            } else if (airTicks >= 3 && airTicks <= 5) {
+                // human telly phase 2: flick camera backward towards target block face
                 targetYaw = initialYaw - 180.0f;
-                targetPitch = 50.0f + (airTicks - 3) * 4.0f;
-            } else {
-                // human telly phase 3: descent placement window (airticks 7-11) derived from human 3k log
-                targetYaw = initialYaw - 180.0f;
-
-                BlockData blockData = findBlockData();
-                if (blockData != null) {
-                    Vec3 hitVec = RotationUtils.getVec3(blockData.pos, blockData.facing);
+                if (cachedBlockData != null) {
+                    Vec3 hitVec = RotationUtils.getVec3(cachedBlockData.pos, cachedBlockData.facing);
                     float[] rots = RotationUtils.getRotations(hitVec);
-                    targetPitch = MathHelper.clamp_float(rots[1], 68.0f, 73.0f);
+                    targetPitch = rots[1];
                 } else {
-                    targetPitch = 70.5f;
+                    targetPitch = 72.2f;
+                }
+            } else {
+                // human telly phase 3: descent placement window (airticks 6-13) derived from human telemetry
+                targetYaw = initialYaw - 180.0f + jumpYawJitter;
+
+                if (cachedBlockData != null) {
+                    Vec3 hitVec = RotationUtils.getVec3(cachedBlockData.pos, cachedBlockData.facing).add(jumpHitVecOffset);
+                    float[] rots = RotationUtils.getRotations(hitVec);
+                    targetPitch = rots[1] + jumpPitchJitter;
+                } else {
+                    targetPitch = 72.2f + jumpPitchJitter;
                 }
 
-                boolean placeWindow = airTicks >= 7;
+                boolean placeWindow = airTicks >= 6 && airTicks <= 13;
 
-                if (placeWindow && blockData != null) {
-                    placeBlock(blockData);
+                if (placeWindow && cachedBlockData != null) {
+                    placeBlock(cachedBlockData);
                 }
             }
         } else {
@@ -127,15 +144,19 @@ public class TellyBridge extends Module {
             KeyBinding.setKeyBindState(mc.gameSettings.keyBindUseItem.getKeyCode(), Keyboard.isKeyDown(mc.gameSettings.keyBindUseItem.getKeyCode()));
         }
 
-        // hard lock visual player camera directly to target yaw and pitch to eliminate mouse-step accumulation
+        // dynamic human camera rotation speeds based on 10k tick telemetry
+        float yawSpeed = (airTicks <= 7) ? 180.0f + (float)(Math.random() * 25.0) : 30.0f + (float)(Math.random() * 10.0);
+        float pitchSpeed = (airTicks <= 7) ? 180.0f + (float)(Math.random() * 25.0) : 20.0f + (float)(Math.random() * 5.0);
+
+        // 100% physical: apply rotations directly to the player camera
         mc.thePlayer.rotationYaw = targetYaw;
         mc.thePlayer.rotationPitch = targetPitch;
 
-        // camera rotation and packet synchronization with strict movement correction for legit anti-cheat compliance (silent = false)
+        // single authoritative rotation pipeline
         RotationHandler.setRotation(
                 new float[]{targetYaw, targetPitch},
                 MovementCorrectionMode.Strict,
-                new float[]{999.0f, 999.0f},
+                new float[]{yawSpeed, pitchSpeed},
                 false,
                 new float[]{0.0f, 0.0f},
                 SmoothMode.Linear,
@@ -175,20 +196,32 @@ public class TellyBridge extends Module {
     }
 
     private BlockData findBlockData() {
-        BlockPos playerPos = new BlockPos(mc.thePlayer.posX, initialY, mc.thePlayer.posZ);
+        int feetY = (int) Math.floor(mc.thePlayer.posY - 0.5);
         EnumFacing moveFacing = EnumFacing.fromAngle(initialYaw);
         EnumFacing backFacing = moveFacing.getOpposite();
 
-        // search up to 4 blocks back along movement line for nearest solid block side face at initialY height
-        for (int i = 0; i <= 4; i++) {
-            BlockPos searchPos = playerPos.offset(backFacing, i);
-            for (EnumFacing facing : EnumFacing.values()) {
-                if (facing == EnumFacing.UP || facing == EnumFacing.DOWN) {
-                    continue;
-                }
-                BlockPos neighbor = searchPos.offset(facing);
-                if (!(mc.theWorld.getBlockState(neighbor).getBlock() instanceof BlockAir)) {
-                    return new BlockData(neighbor, facing.getOpposite());
+        // search Y levels near player feet (current level and level below)
+        for (int yOffset = 0; yOffset >= -1; yOffset--) {
+            BlockPos basePos = new BlockPos(mc.thePlayer.posX, feetY + yOffset, mc.thePlayer.posZ);
+
+            // search up to 4 blocks back along movement line for nearest solid block
+            for (int i = 0; i <= 4; i++) {
+                BlockPos searchPos = basePos.offset(backFacing, i);
+                for (EnumFacing facing : EnumFacing.values()) {
+                    if (facing == EnumFacing.UP) {
+                        continue; // skip ceiling placements (clicking the bottom face of a block above us)
+                    }
+                    
+                    BlockPos neighbor = searchPos.offset(facing);
+
+                    // if clicking the top face of a block, ensure it's below our feet for strict line-of-sight
+                    if (facing == EnumFacing.DOWN && neighbor.getY() >= mc.thePlayer.posY) {
+                        continue;
+                    }
+
+                    if (!(mc.theWorld.getBlockState(neighbor).getBlock() instanceof BlockAir)) {
+                        return new BlockData(neighbor, facing.getOpposite());
+                    }
                 }
             }
         }
@@ -200,9 +233,21 @@ public class TellyBridge extends Module {
             return;
         }
 
-        Vec3 hitVec = RotationUtils.getVec3(data.pos, data.facing);
+        // update client raytrace mouseover to get exact crosshair hit target
+        mc.entityRenderer.getMouseOver(1.0f);
 
-        if (mc.playerController.onPlayerRightClick(mc.thePlayer, mc.theWorld, mc.thePlayer.getHeldItem(), data.pos, data.facing, hitVec)) {
+        // strictly verify that the crosshair is physically aiming at the target block face
+        if (mc.objectMouseOver == null || mc.objectMouseOver.typeOfHit != net.minecraft.util.MovingObjectPosition.MovingObjectType.BLOCK) {
+            return;
+        }
+
+        if (!mc.objectMouseOver.getBlockPos().equals(data.pos)) {
+            return;
+        }
+
+        Vec3 hitVec = mc.objectMouseOver.hitVec;
+
+        if (mc.playerController.onPlayerRightClick(mc.thePlayer, mc.theWorld, mc.thePlayer.getHeldItem(), mc.objectMouseOver.getBlockPos(), mc.objectMouseOver.sideHit, hitVec)) {
             mc.thePlayer.swingItem();
             mc.getNetHandler().addToSendQueue(new C0APacketAnimation());
         }

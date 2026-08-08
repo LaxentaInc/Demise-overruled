@@ -47,7 +47,7 @@ public class ModuleManager {
             AnnoyUtils.class, AutoQueue.class, AutoRegister.class, ExplosionBlock.class, FlagDetector.class,
             InventorySync.class, MurderMystery.class, Test.class, Twerk.class, BloxdPhysics.class, Gambling.class,
             AutoMeow.class, CheatDetector.class, Translator.class, Spammer.class, InputFix.class, RealLag.class,
-            KillInsults.class, TellyRecorder.class
+            KillInsults.class, TellyRecorder.class, CombatRecorder.class
     );
 
     private static final Set<Class<? extends Module>> EXPLOIT_MODULES = Set.of(
