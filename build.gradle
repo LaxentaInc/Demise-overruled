@@ -123,3 +123,32 @@ dependencies {
     compileOnly fileTree(dir: "libs", include: "*.jar")
     testCompileOnly fileTree(dir: "libs", include: "*.jar")
 }
+
+// direct development launcher task for instant terminal execution without shadowjar packaging
+tasks.register('runClient', JavaExec) {
+    group = "minecraft"
+    description = "runs the demise client directly from source for rapid testing"
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = "Start"
+    workingDir = file("${project.rootDir}/run")
+    
+    // allocate memory and configure jvm debugging
+    jvmArgs = [
+        "-Xmx2G",
+        "-Xms512M",
+        "-XX:+AllowEnhancedClassRedefinition"
+    ]
+    
+    // pass minecraft 1.8.9 launch arguments targeting native assets directory
+    args = [
+        "--version", "demise",
+        "--accessToken", "0",
+        "--assetsDir", "${System.getProperty('user.home')}/AppData/Roaming/.minecraft/assets",
+        "--assetIndex", "1.8",
+        "--userProperties", "{}"
+    ]
+    
+    doFirst {
+        file("${project.rootDir}/run").mkdirs()
+    }
+}

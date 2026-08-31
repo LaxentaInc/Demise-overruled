@@ -36,4 +36,12 @@ if ($LASTEXITCODE -eq 0) {
 }
 ```
 
+### quick launch & developer run (instant execution)
+Instead of building the full JAR and copying it to `.minecraft`, you can launch Demise **directly from the terminal in 2 seconds**:
+
+```powershell
+.\gradlew runClient '-Dorg.gradle.java.home=C:\Program Files\JetBrains\IntelliJ IDEA 2025.3.1.1\jbr'
+```
+*When you make code changes, Gradle will only recompile the modified file incrementally and boot the client immediately!*
+
 ### the client is in early development, feel free to report any bugs in the issues or on the discord server

@@ -109,6 +109,7 @@ import wtf.demise.features.modules.impl.combat.TimerRange;
 import wtf.demise.features.modules.impl.legit.HitSelect;
 import wtf.demise.gui.mainmenu.GuiMainMenu;
 import wtf.demise.utils.render.RenderUtils;
+import wtf.demise.utils.render.VideoBackground;
 
 import javax.imageio.ImageIO;
 import java.awt.*;
@@ -656,7 +657,8 @@ public class Minecraft implements IThreadListener, IPlayerUsage {
         GlStateManager.disableDepth();
         GlStateManager.enableTexture2D();
 
-        RenderUtils.drawRect(0, 0, sr.getScaledWidth(), sr.getScaledHeight(), Color.black.getRGB());
+        // render live animated wallpaper video background behind startup splash logo
+        VideoBackground.draw();
         RenderUtils.drawImage(new ResourceLocation("demise/texture/splash.png"), (float) (sr.getScaledWidth() / 2 - 75), (float) (sr.getScaledHeight() / 2 - 25), 150, 50);
 
         GlStateManager.disableLighting();
