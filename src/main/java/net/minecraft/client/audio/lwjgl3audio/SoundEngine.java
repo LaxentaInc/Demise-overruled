@@ -167,7 +167,7 @@ public class SoundEngine extends Library {
                     } else {
                         this.bufferMap.put(filenameURL.getFilename(), buffer);
                         AudioFormat audioFormat = buffer.audioFormat;
-                        short soundFormat = 0;
+                        int soundFormat = 0;
                         if (audioFormat.getChannels() == 1) {
                             if (audioFormat.getSampleSizeInBits() == 8) {
                                 soundFormat = 4352;
@@ -202,7 +202,11 @@ public class SoundEngine extends Library {
                         if (this.errorCheck(AL10.alGetError() != 0, "alGenBuffers error when loading " + filenameURL.getFilename())) {
                             return false;
                         } else {
-                            AL10.alBufferData(intBuffer.get(0), soundFormat, BufferUtils.createByteBuffer(buffer.audioData.length).put(buffer.audioData).flip(), (int) audioFormat.getSampleRate());
+                            // populate explicit byte buffer for lwjgl openal audio streaming
+                            ByteBuffer byteBuffer = BufferUtils.createByteBuffer(buffer.audioData.length);
+                            byteBuffer.put(buffer.audioData);
+                            byteBuffer.flip();
+                            AL10.alBufferData(intBuffer.get(0), soundFormat, byteBuffer, (int) audioFormat.getSampleRate());
                             if (this.errorCheck(AL10.alGetError() != 0, "alBufferData error when loading " + filenameURL.getFilename()) && this.errorCheck(false, "Sound buffer was not created for " + filenameURL.getFilename())) {
                                 return false;
                             } else {
@@ -236,7 +240,7 @@ public class SoundEngine extends Library {
         } else {
             this.bufferMap.put(identifier, buffer);
             AudioFormat audioFormat = buffer.audioFormat;
-            short soundFormat = 0;
+            int soundFormat = 0;
             if (audioFormat.getChannels() == 1) {
                 if (audioFormat.getSampleSizeInBits() == 8) {
                     soundFormat = 4352;
@@ -271,7 +275,11 @@ public class SoundEngine extends Library {
             if (this.errorCheck(AL10.alGetError() != 0, "alGenBuffers error when saving " + identifier)) {
                 return false;
             } else {
-                AL10.alBufferData(intBuffer.get(0), soundFormat, BufferUtils.createByteBuffer(buffer.audioData.length).put(buffer.audioData).flip(), (int) audioFormat.getSampleRate());
+                // populate explicit byte buffer for lwjgl openal audio streaming
+                ByteBuffer byteBuffer = BufferUtils.createByteBuffer(buffer.audioData.length);
+                byteBuffer.put(buffer.audioData);
+                byteBuffer.flip();
+                AL10.alBufferData(intBuffer.get(0), soundFormat, byteBuffer, (int) audioFormat.getSampleRate());
                 if (this.errorCheck(AL10.alGetError() != 0, "alBufferData error when saving " + identifier) && this.errorCheck(false, "Sound buffer was not created for " + identifier)) {
                     return false;
                 } else {
