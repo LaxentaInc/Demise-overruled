@@ -1,6 +1,6 @@
 # demise
 A Minecraft client based around bypassing strict anticheats.
-
+I am scared if github removed accounts if i distribut the binary, i will provide it on the site. https://colorwall.xyz
 ### how to install?
 1) download the .jar from releases that match your os, and rename it to `demise` (keep the file extension the same plz)
 2) download the .json from `/json/demise.json`
