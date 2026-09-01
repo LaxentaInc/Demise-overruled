@@ -234,6 +234,9 @@ public class PanelGui extends GuiScreen {
             Fonts.interRegular.get(10).drawString("Search...", searchX + 6.0f, topPillY + 5.0f, new Color(120, 125, 135, 180).getRGB());
         }
 
+        searchCategoryComponent.setSelected(selectedSearchCategory != null);
+        configCategoryComponent.setSelected(selectedConfigCategory != null);
+
         if (selectedSearchCategory != null) {
             searchCategoryComponent.render(false);
             searchCategoryComponent.drawScreen(mouseX, mouseY);
