@@ -6,6 +6,7 @@ public class Start {
 
     public static void main(String[] args) {
         if (args.length > 0) {
+            System.out.println("DEBUG ARGS: " + java.util.Arrays.toString(args));
             // forward arguments directly from gradle or ide run configuration
             Main.main(args);
         } else {

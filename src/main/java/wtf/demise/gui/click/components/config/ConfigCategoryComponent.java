@@ -56,10 +56,10 @@ public class ConfigCategoryComponent implements IComponent {
         if (isSelected) {
             handleScroll();
 
-            float startX = PanelGui.posX + 10.0f;
-            float componentStartY = PanelGui.posY + 44.0f;
-            float contentWidth = PanelGui.width - 20.0f;
-            float viewHeight = Math.max(100.0f, PanelGui.height - 70.0f);
+            float startX = PanelGui.posX + 140.0f;
+            float componentStartY = PanelGui.posY + 74.0f;
+            float contentWidth = Math.max(130.0f, PanelGui.width - 150.0f);
+            float viewHeight = Math.max(100.0f, PanelGui.height - 84.0f);
 
             float totalHeight = 0;
             for (ConfigComponent ignored : configs) {

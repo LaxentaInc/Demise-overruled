@@ -57,15 +57,19 @@ public class SearchCategory implements IComponent {
         if (isSelected) {
             handleScroll();
 
-            float startX = PanelGui.posX + 10.0f;
-            float componentStartY = PanelGui.posY + 44.0f;
-            float contentWidth = PanelGui.width - 20.0f;
-            float viewHeight = Math.max(100.0f, PanelGui.height - 70.0f);
+            float startX = PanelGui.posX + 140.0f;
+            float componentStartY = PanelGui.posY + 74.0f;
+            float contentWidth = Math.max(130.0f, PanelGui.width - 150.0f);
+            float viewHeight = Math.max(100.0f, PanelGui.height - 84.0f);
 
-            float totalHeight = 0;
-            for (ModuleComponent module : moduleComponents) {
-                totalHeight += module.getHeight() + 6.0f;
-            }
+            int cols = Math.max(1, (int) (contentWidth / 135.0f));
+            float colGap = 8.0f;
+            float rowGap = 8.0f;
+            float cardWidth = (contentWidth - (cols - 1) * colGap) / cols;
+            float cardHeight = 115.0f;
+
+            int totalRows = (moduleComponents.size() + cols - 1) / cols;
+            float totalHeight = totalRows * cardHeight + Math.max(0, totalRows - 1) * rowGap;
 
             maxScroll = Math.max(0, totalHeight - viewHeight);
             scrollOffset = MathUtils.interpolate(scrollOffset, targetScrollOffset, 0.15f);
@@ -74,15 +78,19 @@ public class SearchCategory implements IComponent {
             GL11.glEnable(GL11.GL_SCISSOR_TEST);
 
             float componentOffsetY = componentStartY + 2.0f;
-            for (ModuleComponent module : moduleComponents) {
-                float moduleY = componentOffsetY - scrollOffset;
-                module.setX(startX);
-                module.setY(moduleY);
-                module.render(shader);
-                module.setVisible(moduleY + 38.0f >= componentStartY && moduleY <= componentStartY + viewHeight);
-                module.setVisibleSetting(moduleY + module.getHeight() >= componentStartY && moduleY <= componentStartY + viewHeight);
+            for (int i = 0; i < moduleComponents.size(); i++) {
+                int col = i % cols;
+                int row = i / cols;
+                float cardX = startX + col * (cardWidth + colGap);
+                float cardY = componentOffsetY + row * (cardHeight + rowGap) - scrollOffset;
 
-                componentOffsetY += module.getHeight() + 6.0f;
+                ModuleComponent module = moduleComponents.get(i);
+                module.setX(cardX);
+                module.setY(cardY);
+                module.setWidth(cardWidth);
+                module.setHeight(cardHeight);
+                module.render(shader);
+                module.setVisible(cardY + cardHeight >= componentStartY && cardY <= componentStartY + viewHeight);
             }
 
             GL11.glDisable(GL11.GL_SCISSOR_TEST);
@@ -102,10 +110,6 @@ public class SearchCategory implements IComponent {
 
     @Override
     public void mouseClicked(int mouseX, int mouseY, int mouseButton) {
-        float watermarkWidth = Fonts.urbanist.get(35).getStringWidth(Demise.INSTANCE.getClientName()) + 2 + Fonts.urbanist.get(24).getStringWidth(Demise.INSTANCE.getVersion());
-        float calcWidth = 450 - watermarkWidth - 19;
-        inputting = MouseUtils.isHovered(posX + watermarkWidth + 13, posY + 7, calcWidth, 20, mouseX, mouseY) && mouseButton == 0;
-
         moduleComponents.forEach(moduleComponent -> moduleComponent.mouseClicked(mouseX, mouseY, mouseButton));
     }
 
