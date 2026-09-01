@@ -5,6 +5,8 @@ plugins {
 
 group = "wtf.demise"
 version = "1.8.9"
+sourceCompatibility = 17
+targetCompatibility = 17
 
 ext {
     gsonVersion = "2.8.9"

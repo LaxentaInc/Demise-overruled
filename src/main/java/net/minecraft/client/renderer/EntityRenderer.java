@@ -555,6 +555,20 @@ public class EntityRenderer implements IResourceManagerReloadListener {
 
     private void orientCamera(float partialTicks) {
         Entity entity = mc.getRenderViewEntity();
+        
+        wtf.demise.features.modules.impl.visual.Freelook freelook = wtf.demise.Demise.INSTANCE.getModuleManager().getModule(wtf.demise.features.modules.impl.visual.Freelook.class);
+        float originalYaw = entity.rotationYaw;
+        float originalPitch = entity.rotationPitch;
+        float originalPrevYaw = entity.prevRotationYaw;
+        float originalPrevPitch = entity.prevRotationPitch;
+        
+        if (freelook != null && freelook.isEnabled()) {
+            entity.rotationYaw = freelook.cameraYaw;
+            entity.rotationPitch = freelook.cameraPitch;
+            entity.prevRotationYaw = freelook.cameraYaw;
+            entity.prevRotationPitch = freelook.cameraPitch;
+        }
+
         float f = entity.getEyeHeight();
         double d0 = entity.prevPosX + (entity.posX - entity.prevPosX) * (double) partialTicks;
         double d1 = entity.prevPosY + (entity.posY - entity.prevPosY) * (double) partialTicks + (double) f;
@@ -667,6 +681,13 @@ public class EntityRenderer implements IResourceManagerReloadListener {
         d1 = entity.prevPosY + (entity.posY - entity.prevPosY) * (double) partialTicks + (double) f;
         d2 = entity.prevPosZ + (entity.posZ - entity.prevPosZ) * (double) partialTicks;
         cloudFog = mc.renderGlobal.hasCloudFog(d0, d1, d2, partialTicks);
+        
+        if (freelook != null && freelook.isEnabled()) {
+            entity.rotationYaw = originalYaw;
+            entity.rotationPitch = originalPitch;
+            entity.prevRotationYaw = originalPrevYaw;
+            entity.prevRotationPitch = originalPrevPitch;
+        }
     }
 
     public void setupCameraTransform(float partialTicks, int pass) {
@@ -1019,6 +1040,8 @@ public class EntityRenderer implements IResourceManagerReloadListener {
                 i = -1;
             }
 
+            wtf.demise.features.modules.impl.visual.Freelook freelook = wtf.demise.Demise.INSTANCE.getModuleManager().getModule(wtf.demise.features.modules.impl.visual.Freelook.class);
+
             if (mc.gameSettings.smoothCamera) {
                 smoothCamYaw += f2;
                 smoothCamPitch += f3;
@@ -1026,11 +1049,23 @@ public class EntityRenderer implements IResourceManagerReloadListener {
                 smoothCamPartialTicks = partialTicks;
                 f2 = smoothCamFilterX * f4;
                 f3 = smoothCamFilterY * f4;
-                mc.thePlayer.setAngles(f2, f3 * (float) i);
+                if (freelook != null && freelook.isEnabled()) {
+                    freelook.cameraYaw += (float)((double)f2 * 0.15D);
+                    freelook.cameraPitch -= (float)((double)(f3 * (float)i) * 0.15D);
+                    freelook.cameraPitch = net.minecraft.util.MathHelper.clamp_float(freelook.cameraPitch, -90.0F, 90.0F);
+                } else {
+                    mc.thePlayer.setAngles(f2, f3 * (float) i);
+                }
             } else {
                 smoothCamYaw = 0.0F;
                 smoothCamPitch = 0.0F;
-                mc.thePlayer.setAngles(f2, f3 * (float) i);
+                if (freelook != null && freelook.isEnabled()) {
+                    freelook.cameraYaw += (float)((double)f2 * 0.15D);
+                    freelook.cameraPitch -= (float)((double)(f3 * (float)i) * 0.15D);
+                    freelook.cameraPitch = net.minecraft.util.MathHelper.clamp_float(freelook.cameraPitch, -90.0F, 90.0F);
+                } else {
+                    mc.thePlayer.setAngles(f2, f3 * (float) i);
+                }
             }
         }
 
