@@ -5,6 +5,7 @@ import lombok.Setter;
 import wtf.demise.Demise;
 import wtf.demise.features.config.impl.ModuleConfig;
 import wtf.demise.gui.click.IComponent;
+import wtf.demise.gui.click.PanelGui;
 import wtf.demise.gui.font.Fonts;
 import wtf.demise.utils.math.MathUtils;
 import wtf.demise.utils.misc.ChatUtils;
@@ -36,51 +37,65 @@ public class ConfigComponent implements IComponent {
     }
 
     public void render(boolean shader) {
-        float width = 375;
-        slideProgress = MathUtils.interpolate(slideProgress, visible ? 1 : 0, 0.1f);
-        float slideOffset = (width / 4) * (1.0f - slideProgress);
+        float width = Math.max(250.0f, PanelGui.width - 20.0f);
+        slideProgress = MathUtils.interpolate(slideProgress, visible ? 1.0f : 0.0f, 0.15f);
+        float slideOffset = (width / 6.0f) * (1.0f - slideProgress);
 
         if (!shader) {
             if (isHovered) {
-                interpolatedColor = ColorUtils.interpolateColorC(interpolatedColor, new Color(35, 35, 35, 190), 0.1f);
+                interpolatedColor = ColorUtils.interpolateColorC(interpolatedColor, new Color(32, 35, 42, 230), 0.15f);
             } else {
-                interpolatedColor = ColorUtils.interpolateColorC(interpolatedColor, new Color(20, 20, 20, 150), 0.1f);
+                interpolatedColor = ColorUtils.interpolateColorC(interpolatedColor, new Color(24, 26, 32, 190), 0.15f);
             }
 
-            if (Objects.equals(Demise.INSTANCE.getConfigManager().getCurrentConfig(), name)) {
-                interpolatedColor1 = ColorUtils.interpolateColorC(interpolatedColor1, new Color(50, 50, 50, 150), 0.1f);
+            boolean isCurrent = Objects.equals(Demise.INSTANCE.getConfigManager().getCurrentConfig(), name);
+            if (isCurrent) {
+                interpolatedColor1 = ColorUtils.interpolateColorC(interpolatedColor1, new Color(40, 50, 65, 180), 0.15f);
             } else {
-                interpolatedColor1 = ColorUtils.interpolateColorC(interpolatedColor1, new Color(0, 0, 0, 0), 0.1f);
+                interpolatedColor1 = ColorUtils.interpolateColorC(interpolatedColor1, new Color(0, 0, 0, 0), 0.15f);
             }
 
-            RoundedUtils.drawRound(x + slideOffset, y, width, 30, 8, interpolatedColor);
-            RoundedUtils.drawRound(x + slideOffset, y, width, 30, 8, interpolatedColor1);
+            RoundedUtils.drawRound(x + slideOffset, y, width, 32.0f, 7.0f, interpolatedColor);
+            RoundedUtils.drawRound(x + slideOffset, y, width, 32.0f, 7.0f, interpolatedColor1);
 
-            Fonts.interRegular.get(20).drawString(name, x + 7 + slideOffset, y + 11, Color.white.getRGB());
+            if (isCurrent) {
+                RoundedUtils.drawRound(x + slideOffset + 2.0f, y + 6.0f, 3.0f, 20.0f, 1.5f, new Color(56, 189, 248, 240));
+            }
 
-            float saveWidth = Fonts.interRegular.get(14).getStringWidth("save");
-            float deleteWidth = Fonts.interRegular.get(14).getStringWidth("delete");
+            Fonts.interMedium.get(14).drawString(name, x + 12.0f + slideOffset, y + 10.0f, Color.white.getRGB());
 
-            Color saveColor = saveHovered ? new Color(255, 255, 255) : new Color(179, 179, 179);
-            Color deleteColor = deleteHovered ? new Color(255, 255, 255) : new Color(179, 179, 179);
+            float saveWidth = Fonts.interRegular.get(12).getStringWidth("Save") + 12.0f;
+            float deleteWidth = Fonts.interRegular.get(12).getStringWidth("Delete") + 12.0f;
 
-            Fonts.interRegular.get(14).drawString("save", x + width - 10 - deleteWidth - 5 - saveWidth + slideOffset, y + 13, saveColor.getRGB());
-            Fonts.interRegular.get(14).drawString("delete", x + width - 10 - deleteWidth + slideOffset, y + 13, deleteColor.getRGB());
+            float deleteX = x + width - 10.0f - deleteWidth + slideOffset;
+            float saveX = deleteX - 6.0f - saveWidth;
+
+            Color saveBg = saveHovered ? new Color(56, 189, 248, 200) : new Color(38, 42, 50, 200);
+            Color deleteBg = deleteHovered ? new Color(239, 68, 68, 200) : new Color(38, 42, 50, 200);
+
+            RoundedUtils.drawRound(saveX, y + 7.0f, saveWidth, 18.0f, 4.0f, saveBg);
+            Fonts.interRegular.get(12).drawString("Save", saveX + 6.0f, y + 10.0f, Color.white.getRGB());
+
+            RoundedUtils.drawRound(deleteX, y + 7.0f, deleteWidth, 18.0f, 4.0f, deleteBg);
+            Fonts.interRegular.get(12).drawString("Delete", deleteX + 6.0f, y + 10.0f, Color.white.getRGB());
         } else {
-            RoundedUtils.drawShaderRound(x + slideOffset, y, width, 30, 8, Color.black);
+            RoundedUtils.drawShaderRound(x + slideOffset, y, width, 32.0f, 7.0f, Color.black);
         }
     }
 
     @Override
     public void drawScreen(int mouseX, int mouseY) {
-        float width = 375;
-        float slideOffset = (width / 4) * (1.0f - slideProgress);
-        float saveWidth = Fonts.interRegular.get(14).getStringWidth("save");
-        float deleteWidth = Fonts.interRegular.get(14).getStringWidth("delete");
+        float width = Math.max(250.0f, PanelGui.width - 20.0f);
+        float slideOffset = (width / 6.0f) * (1.0f - slideProgress);
+        float saveWidth = Fonts.interRegular.get(12).getStringWidth("Save") + 12.0f;
+        float deleteWidth = Fonts.interRegular.get(12).getStringWidth("Delete") + 12.0f;
 
-        this.isHovered = MouseUtils.isHovered(x + slideOffset, y, width - 15 - deleteWidth - 15 - saveWidth, 30, mouseX, mouseY);
-        this.saveHovered = MouseUtils.isHovered(x + width - 10 - deleteWidth - 5 - saveWidth + slideOffset, y, saveWidth, 30, mouseX, mouseY);
-        this.deleteHovered = MouseUtils.isHovered(x + width - 10 - deleteWidth + slideOffset, y, deleteWidth, 30, mouseX, mouseY);
+        float deleteX = x + width - 10.0f - deleteWidth + slideOffset;
+        float saveX = deleteX - 6.0f - saveWidth;
+
+        this.isHovered = MouseUtils.isHovered(x + slideOffset, y, saveX - (x + slideOffset), 32.0f, mouseX, mouseY);
+        this.saveHovered = MouseUtils.isHovered(saveX, y + 7.0f, saveWidth, 18.0f, mouseX, mouseY);
+        this.deleteHovered = MouseUtils.isHovered(deleteX, y + 7.0f, deleteWidth, 18.0f, mouseX, mouseY);
     }
 
     @Override

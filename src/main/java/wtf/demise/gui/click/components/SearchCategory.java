@@ -55,45 +55,34 @@ public class SearchCategory implements IComponent {
 
     public void render(boolean shader) {
         if (isSelected) {
-            String thing = (System.currentTimeMillis() % 1000 > 500 ? "|" : "");
-
-            if (inputting) {
-                if (!filter.isEmpty()) {
-                    drawText(filter + thing);
-                } else {
-                    drawText("Search..." + thing);
-                }
-            } else {
-                drawText("Search...");
-            }
-
             handleScroll();
 
-            float componentStartY = posY + 12 + Fonts.urbanist.get(35).getHeight();
-            float viewHeight = 255;
+            float startX = PanelGui.posX + 10.0f;
+            float componentStartY = PanelGui.posY + 44.0f;
+            float contentWidth = PanelGui.width - 20.0f;
+            float viewHeight = Math.max(100.0f, PanelGui.height - 70.0f);
 
             float totalHeight = 0;
-
             for (ModuleComponent module : moduleComponents) {
-                totalHeight += module.getHeight() + 10;
+                totalHeight += module.getHeight() + 6.0f;
             }
 
             maxScroll = Math.max(0, totalHeight - viewHeight);
-            scrollOffset = MathUtils.interpolate(scrollOffset, targetScrollOffset, 0.1f);
+            scrollOffset = MathUtils.interpolate(scrollOffset, targetScrollOffset, 0.15f);
 
-            RenderUtils.scissor(0, componentStartY, posX + 450, viewHeight, PanelGui.interpolatedScale);
+            RenderUtils.scissor(startX - 2.0f, componentStartY, contentWidth + 4.0f, viewHeight, PanelGui.interpolatedScale);
             GL11.glEnable(GL11.GL_SCISSOR_TEST);
 
-            float componentOffsetY = componentStartY + 2;
+            float componentOffsetY = componentStartY + 2.0f;
             for (ModuleComponent module : moduleComponents) {
                 float moduleY = componentOffsetY - scrollOffset;
-                module.setX(posX + 67);
+                module.setX(startX);
                 module.setY(moduleY);
                 module.render(shader);
-                module.setVisible(moduleY + 35 >= componentStartY && moduleY <= componentStartY + viewHeight);
+                module.setVisible(moduleY + 38.0f >= componentStartY && moduleY <= componentStartY + viewHeight);
                 module.setVisibleSetting(moduleY + module.getHeight() >= componentStartY && moduleY <= componentStartY + viewHeight);
 
-                componentOffsetY += module.getHeight() + 10;
+                componentOffsetY += module.getHeight() + 6.0f;
             }
 
             GL11.glDisable(GL11.GL_SCISSOR_TEST);

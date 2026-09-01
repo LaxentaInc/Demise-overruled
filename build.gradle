@@ -139,9 +139,10 @@ tasks.register('runClient', JavaExec) {
         "-XX:+AllowEnhancedClassRedefinition"
     ]
     
-    // pass minecraft 1.8.9 launch arguments targeting native assets directory
+    // pass minecraft 1.8.9 launch arguments targeting native assets directory and custom username
     args = [
         "--version", "demise",
+        "--username", "hesophere",
         "--accessToken", "0",
         "--assetsDir", "${System.getProperty('user.home')}/AppData/Roaming/.minecraft/assets",
         "--assetIndex", "1.8",

@@ -53,58 +53,34 @@ public class ConfigCategoryComponent implements IComponent {
     }
 
     public void render(boolean shader) {
-        float x = this.x;
-
-        if (isSelected) {
-            x += 3;
-            float width = Fonts.interRegular.get(18).getStringWidth(name);
-            interpolatedLineWidth = MathUtils.interpolate(interpolatedLineWidth, width, 0.05f);
-        } else {
-            interpolatedLineWidth = MathUtils.interpolate(interpolatedLineWidth, 0, 0.05f);
-        }
-
-        if (isHovered) {
-            x += 2.5f;
-        }
-
-        if (!PanelGui.dragging) {
-            interpolatedX = MathUtils.interpolate(interpolatedX, x, 0.15f);
-        } else {
-            interpolatedX = x;
-        }
-
-        if (!shader) {
-            Fonts.interRegular.get(18).drawString(name, interpolatedX, y, Color.white.getRGB());
-            RenderUtils.drawRect(interpolatedX, y + Fonts.interRegular.get(18).getHeight() - 2.6f, interpolatedLineWidth, 0.5f, Color.white.getRGB());
-        }
-
         if (isSelected) {
             handleScroll();
 
-            float componentStartY = PanelGui.posY + 17 + Fonts.urbanist.get(35).getHeight();
-            float viewHeight = 250;
+            float startX = PanelGui.posX + 10.0f;
+            float componentStartY = PanelGui.posY + 44.0f;
+            float contentWidth = PanelGui.width - 20.0f;
+            float viewHeight = Math.max(100.0f, PanelGui.height - 70.0f);
 
             float totalHeight = 0;
-
             for (ConfigComponent ignored : configs) {
-                totalHeight += 40;
+                totalHeight += 38.0f;
             }
 
             maxScroll = Math.max(0, totalHeight - viewHeight);
-            scrollOffset = MathUtils.interpolate(scrollOffset, targetScrollOffset, 0.1f);
+            scrollOffset = MathUtils.interpolate(scrollOffset, targetScrollOffset, 0.15f);
 
-            RenderUtils.scissor(0, componentStartY - 2, PanelGui.posX + 450, viewHeight, PanelGui.interpolatedScale);
+            RenderUtils.scissor(startX - 2.0f, componentStartY, contentWidth + 4.0f, viewHeight, PanelGui.interpolatedScale);
             GL11.glEnable(GL11.GL_SCISSOR_TEST);
 
-            float componentOffsetY = componentStartY;
+            float componentOffsetY = componentStartY + 2.0f;
             for (ConfigComponent config : configs) {
                 float moduleY = componentOffsetY - scrollOffset;
-                config.setX(this.x + 60);
+                config.setX(startX);
                 config.setY(moduleY);
                 config.render(shader);
-                config.setVisible(moduleY + 35 >= componentStartY && moduleY <= componentStartY + viewHeight);
+                config.setVisible(moduleY + 34.0f >= componentStartY && moduleY <= componentStartY + viewHeight);
 
-                componentOffsetY += 35;
+                componentOffsetY += 36.0f;
             }
 
             GL11.glDisable(GL11.GL_SCISSOR_TEST);

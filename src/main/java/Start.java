@@ -1,18 +1,28 @@
 import net.minecraft.client.main.Main;
 
-import java.util.Arrays;
+import java.io.File;
 
 public class Start {
 
     public static void main(String[] args) {
-        //System.setProperty("org.lwjgl.librarypath", new File("../natives/" + (System.getProperty("os.name").startsWith("Windows") ? "windows" : "linux")).getAbsolutePath());
+        if (args.length > 0) {
+            // forward arguments directly from gradle or ide run configuration
+            Main.main(args);
+        } else {
+            // resolve local minecraft assets directory for standalone ide execution
+            String assetsDir = System.getProperty("user.home") + "/AppData/Roaming/.minecraft/assets";
+            if (!new File(assetsDir).exists()) {
+                assetsDir = "assets";
+            }
 
-        Main.main(concat(new String[]{"--version", "demise", "--accessToken", "0", "--assetsDir", "assets", "--assetIndex", "1.8", "--userProperties", "{}"}, args));
-    }
-
-    public static <T> T[] concat(T[] first, T[] second) {
-        T[] result = Arrays.copyOf(first, first.length + second.length);
-        System.arraycopy(second, 0, result, first.length, second.length);
-        return result;
+            Main.main(new String[]{
+                    "--version", "demise",
+                    "--username", "hesophere",
+                    "--accessToken", "0",
+                    "--assetsDir", assetsDir,
+                    "--assetIndex", "1.8",
+                    "--userProperties", "{}"
+            });
+        }
     }
 }
