@@ -16,13 +16,13 @@ import java.util.concurrent.ThreadLocalRandom;
 @ModuleInfo(name = "AutoClicker", description = "Automatically clicks.")
 public class AutoClicker extends Module {
     private final BoolValue left = new BoolValue("Left click", true, this);
-    private final SliderValue lminCPS = new SliderValue("CPS (left min)", 10, 1, 20, this, left::get);
-    private final SliderValue lmaxCPS = new SliderValue("CPS (left max)", 12, 1, 20, this, left::get);
+    private final SliderValue lminCPS = new SliderValue("CPS (left min)", 16, 1, 30, this, left::get);
+    private final SliderValue lmaxCPS = new SliderValue("CPS (left max)", 20, 1, 30, this, left::get);
     private final BoolValue breakBlocks = new BoolValue("Break blocks (left)", true, this, left::get);
 
     private final BoolValue right = new BoolValue("Right click", true, this);
-    private final SliderValue rminCPS = new SliderValue("CPS (right min)", 10, 1, 20, this, right::get);
-    private final SliderValue rmaxCPS = new SliderValue("CPS (right max)", 12, 1, 20, this, right::get);
+    private final SliderValue rminCPS = new SliderValue("CPS (right min)", 16, 1, 30, this, right::get);
+    private final SliderValue rmaxCPS = new SliderValue("CPS (right max)", 20, 1, 30, this, right::get);
 
     private final TimerUtils leftTimer = new TimerUtils();
     private final TimerUtils rightTimer = new TimerUtils();
@@ -33,8 +33,10 @@ public class AutoClicker extends Module {
         rightTimer.reset();
     }
 
+    private long nextRightDelay = 50;
+
     private boolean isRightReady() {
-        return rightTimer.hasTimeElapsed(1000 / (ThreadLocalRandom.current().nextInt((int) rminCPS.get(), (int) rmaxCPS.get() + 1) * 1.5));
+        return rightTimer.hasTimeElapsed(nextRightDelay);
     }
 
     @EventTarget
@@ -57,6 +59,14 @@ public class AutoClicker extends Module {
                 if (mc.gameSettings.keyBindUseItem.isKeyDown() && isRightReady()) {
                     mc.rightClickMouse();
                     rightTimer.reset();
+                    
+                    long minCps = (long) rminCPS.get();
+                    long maxCps = (long) rmaxCPS.get();
+                    if (minCps > maxCps) minCps = maxCps;
+                    
+                    long baseDelay = 1000L / ThreadLocalRandom.current().nextLong(minCps, maxCps + 1);
+                    long jitter = ThreadLocalRandom.current().nextLong(-11, 12);
+                    nextRightDelay = Math.max(10, baseDelay + jitter);
                 }
             }
         }

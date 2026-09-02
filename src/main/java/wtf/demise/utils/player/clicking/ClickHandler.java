@@ -82,34 +82,36 @@ public class ClickHandler implements InstanceAccess {
         int clicksToDistribute = clicksPerSecond;
 
         for (int i = 0; i < totalTicks; i++) {
-            double probability = (double) clicksToDistribute / (totalTicks - i);
-
-            if (ThreadLocalRandom.current().nextDouble() < probability) {
-                clickPattern.add(1);
-                clicksToDistribute--;
+            if (clicksToDistribute <= 0) {
+                clickPattern.add(0);
                 continue;
             }
-
-            clickPattern.add(0);
+            double probability = (double) clicksToDistribute / (totalTicks - i);
+            int clicksThisTick = (int) Math.floor(probability);
+            if (ThreadLocalRandom.current().nextDouble() < (probability - clicksThisTick)) {
+                clicksThisTick++;
+            }
+            clickPattern.add(clicksThisTick);
+            clicksToDistribute -= clicksThisTick;
         }
 
         patternUpdateTimer.reset();
     }
 
-    private boolean shouldClickThisTick() {
+    private int getClicksThisTick() {
         if (clickPattern.isEmpty() || patternUpdateTimer.hasTimeElapsed(1000)) {
             generateClickPattern();
         }
 
         Integer nextClick = clickPattern.poll();
 
-        boolean check = nextClick != null && nextClick == 1;
+        int clicks = nextClick != null ? nextClick : 0;
 
-        if (smartClicking && check) {
-            return shouldClick();
+        if (smartClicking && clicks > 0) {
+            return shouldClick() ? clicks : 0;
         }
 
-        return check;
+        return clicks;
     }
 
     private void sendAttack() {
@@ -136,9 +138,7 @@ public class ClickHandler implements InstanceAccess {
         }
 
         if (target != null && initialized) {
-            if (shouldClickThisTick()) {
-                cachedClicks++;
-            }
+            cachedClicks += getClicksThisTick();
         } else {
             cachedClicks = 0;
         }
