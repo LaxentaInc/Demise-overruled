@@ -3,10 +3,12 @@ package wtf.demise.features.modules.impl.legit;
 import net.minecraft.network.play.server.S12PacketEntityVelocity;
 import wtf.demise.events.annotations.EventTarget;
 import wtf.demise.events.impl.packet.PacketEvent;
+import wtf.demise.events.impl.player.AttackEvent;
 import wtf.demise.events.impl.player.MoveInputEvent;
 import wtf.demise.events.impl.player.UpdateEvent;
 import wtf.demise.features.modules.Module;
 import wtf.demise.features.modules.ModuleInfo;
+import wtf.demise.features.values.impl.BoolValue;
 import wtf.demise.features.values.impl.SliderValue;
 import wtf.demise.utils.math.MathUtils;
 import wtf.demise.utils.math.TimerUtils;
@@ -16,8 +18,9 @@ public class JumpReset extends Module {
     // chance to actually fire the reset (lower = more human, avoids consistent patterns)
     private final SliderValue chance = new SliderValue("Chance", 80, 1, 100, 1, this);
     // cooldown between resets in ticks. prevents spam-jumping on rapid combo hits.
-    // 8-12 ticks is roughly the minecraft i-frame window, so we only reset once per real hit.
     private final SliderValue cooldownTicks = new SliderValue("Cooldown (Ticks)", 10, 5, 20, 1, this);
+    // auto jump when hitting a player AFTER a successful jump reset to lock them in an air combo
+    private final BoolValue comboJumps = new BoolValue("Combo Jumps", true, this);
 
     // public telemetry fields for the recorder module
     public boolean lastVelocityReceived = false;
@@ -28,16 +31,24 @@ public class JumpReset extends Module {
     private boolean velocityReceivedThisTick = false;
     private boolean wasOnGroundWhenHit = false;
     private boolean pendingJump = false;
+    private boolean pendingComboJump = false;
     private int hitCount = 0;
     private final TimerUtils combatTimer = new TimerUtils();
+
+    // combo state
+    private boolean inComboMode = false;
+    private int ticksSinceLastAttack = 999;
 
     @Override
     public void onDisable() {
         pendingJump = false;
+        pendingComboJump = false;
         hitCount = 0;
         velocityReceivedThisTick = false;
         wasOnGroundWhenHit = false;
         ticksSinceLastReset = 999;
+        inComboMode = false;
+        ticksSinceLastAttack = 999;
     }
 
     @EventTarget
@@ -50,11 +61,19 @@ public class JumpReset extends Module {
                 // only care about knockback that has horizontal component (actual combat hits)
                 if (Math.abs(packet.getMotionX()) > 0 || Math.abs(packet.getMotionZ()) > 0) {
                     velocityReceivedThisTick = true;
-                    // snapshot ground state RIGHT NOW at the moment of impact.
-                    // this is the critical check - jump reset only works if we're grounded.
                     wasOnGroundWhenHit = mc.thePlayer.onGround;
                 }
             }
+        }
+    }
+
+    @EventTarget
+    public void onAttack(AttackEvent e) {
+        ticksSinceLastAttack = 0;
+
+        // If we are in combo mode and have Combo Jumps enabled, automatically queue a jump on hit!
+        if (comboJumps.get() && inComboMode) {
+            pendingComboJump = true;
         }
     }
 
@@ -64,19 +83,21 @@ public class JumpReset extends Module {
         jumpedThisTick = false;
         lastVelocityReceived = velocityReceivedThisTick;
         ticksSinceLastReset++;
+        ticksSinceLastAttack++;
 
         if (combatTimer.hasTimeElapsed(5000)) {
             hitCount = 0;
+        }
+
+        // if we haven't attacked in a while (e.g., 20 ticks / 1 second), combo mode drops
+        if (ticksSinceLastAttack > 20) {
+            inComboMode = false;
         }
 
         if (velocityReceivedThisTick) {
             combatTimer.reset();
             hitCount++;
 
-            // only queue a jump if:
-            // 1. we were on the ground when the velocity packet arrived
-            // 2. we haven't jumped too recently (cooldown)
-            // 3. chance roll passes
             if (wasOnGroundWhenHit && ticksSinceLastReset >= (int)cooldownTicks.get()) {
                 int effectiveChance = (hitCount <= 3) ? 100 : (int) chance.get();
                 if (MathUtils.randomizeInt(1, 100) <= effectiveChance) {
@@ -91,20 +112,21 @@ public class JumpReset extends Module {
 
     @EventTarget
     public void onMoveInput(MoveInputEvent e) {
-        if (!pendingJump) return;
-
-        // fire immediately. no delay needed - we already verified we were on ground
-        // when the velocity arrived, so this is the same tick or next tick at most.
-        // the only hard requirement is that we're still on ground right now.
-        if (mc.thePlayer.onGround) {
-            e.setJumping(true);
-            jumpedThisTick = true;
-            ticksSinceLastReset = 0;
+        if (pendingJump) {
+            if (mc.thePlayer.onGround) {
+                e.setJumping(true);
+                jumpedThisTick = true;
+                ticksSinceLastReset = 0;
+                // A successful jump reset STARTS the combo mode!
+                inComboMode = true; 
+            }
+            pendingJump = false;
+        } else if (pendingComboJump) {
+            if (mc.thePlayer.onGround) {
+                e.setJumping(true);
+                jumpedThisTick = true;
+            }
+            pendingComboJump = false;
         }
-
-        // whether we jumped or not, consume the pending flag.
-        // if we're somehow airborne already (server desync), don't keep trying -
-        // that's the "baseball" behavior we want to avoid.
-        pendingJump = false;
     }
 }
