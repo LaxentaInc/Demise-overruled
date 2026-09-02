@@ -2,87 +2,26 @@ package wtf.demise.features.modules.impl.legit;
 
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.util.MathHelper;
-import net.minecraft.util.Vec3;
 import wtf.demise.events.annotations.EventPriority;
 import wtf.demise.events.annotations.EventTarget;
 import wtf.demise.events.impl.player.MoveInputEvent;
-import wtf.demise.events.impl.player.StrafeEvent;
-import wtf.demise.events.impl.player.UpdateEvent;
 import wtf.demise.features.modules.Module;
 import wtf.demise.features.modules.ModuleInfo;
-import wtf.demise.features.values.impl.BoolValue;
 import wtf.demise.features.values.impl.SliderValue;
-import wtf.demise.utils.math.MathUtils;
 
-@ModuleInfo(name = "LegitStrafe", description = "Perfectly curves your movement around the target with unpredictable juggles.")
+@ModuleInfo(name = "LegitStrafe", description = "Intelligently strafes to maintain an angle at the edge of the target's FOV.")
 public class LegitStrafe extends Module {
-    private final BoolValue autoJiggle = new BoolValue("Auto-Jiggle", true, this);
-    private final SliderValue minJiggleTicks = new SliderValue("Min Jiggle Ticks", 5, 2, 20, 1, this);
-    private final SliderValue maxJiggleTicks = new SliderValue("Max Jiggle Ticks", 15, 5, 40, 1, this);
-    private final BoolValue targetBlindSide = new BoolValue("Target Blind Side", true, this);
 
-    private int strafeDirection = 1;
-    private int ticksUntilJiggle = 0;
-    private boolean wasCollided = false;
+    // The angle (in degrees) to maintain from the target's crosshair.
+    // 45 degrees is generally a good "edge of screen" angle.
+    private final SliderValue targetAngle = new SliderValue("Target Angle", 45, 20, 90, 1, this);
+
+    // Buffer to prevent micro-stuttering when riding the exact angle.
+    private final float angleBuffer = 3.0f;
 
     @Override
     public void onEnable() {
-        strafeDirection = Math.random() > 0.5 ? 1 : -1;
-        ticksUntilJiggle = getRandomJiggleTicks();
-        wasCollided = false;
-    }
-
-    private int getRandomJiggleTicks() {
-        return (int) MathUtils.randomizeFloat(minJiggleTicks.get(), maxJiggleTicks.get());
-    }
-
-    @EventTarget
-    public void onUpdate(UpdateEvent e) {
-        if (mc.thePlayer == null) return;
-
-        // Auto-switch direction if we hit a wall
-        if (mc.thePlayer.isCollidedHorizontally && !wasCollided) {
-            strafeDirection *= -1;
-            ticksUntilJiggle = getRandomJiggleTicks();
-        }
-        wasCollided = mc.thePlayer.isCollidedHorizontally;
-
-        // Random juggling logic
-        if (autoJiggle.get()) {
-            ticksUntilJiggle--;
-            if (ticksUntilJiggle <= 0) {
-                // If targeting blind side, bias the random roll
-                if (targetBlindSide.get()) {
-                    AimAssist aimAssist = (AimAssist) getModule(AimAssist.class);
-                    EntityLivingBase target = aimAssist.getTarget();
-                    if (target != null) {
-                        // Calculate where we are relative to their look direction
-                        float angleToUs = (float) (MathHelper.atan2(mc.thePlayer.posZ - target.posZ, mc.thePlayer.posX - target.posX) * 180.0 / Math.PI - 90.0);
-                        float diff = MathHelper.wrapAngleTo180_float(angleToUs - target.rotationYawHead);
-                        
-                        // If diff is positive, we are on their left side (from their perspective).
-                        // To get behind them, we need to move towards their back.
-                        // We set strafeDirection based on the shortest path to their blind spot.
-                        if (diff > 0) {
-                            strafeDirection = -1; // Strafe right to go to their back
-                        } else {
-                            strafeDirection = 1;  // Strafe left to go to their back
-                        }
-
-                        // Add some randomness so it's not a perfect robot
-                        if (Math.random() < 0.3) {
-                            strafeDirection *= -1;
-                        }
-                    } else {
-                        strafeDirection *= -1;
-                    }
-                } else {
-                    strafeDirection *= -1;
-                }
-                
-                ticksUntilJiggle = getRandomJiggleTicks();
-            }
-        }
+        // Nothing needed on enable
     }
 
     @EventTarget
@@ -95,18 +34,46 @@ public class LegitStrafe extends Module {
 
         // Only activate if we are aiming at someone and trying to engage (holding W)
         if (target != null && event.getForward() > 0) {
+
+            // If user is manually holding A or D, respect their override
+            if (mc.gameSettings.keyBindLeft.isKeyDown()) {
+                event.setStrafe(1.0f);
+                return;
+            } else if (mc.gameSettings.keyBindRight.isKeyDown()) {
+                event.setStrafe(-1.0f);
+                return;
+            }
+
+            // Calculate where we are relative to their look direction
+            float angleToUs = (float) (MathHelper.atan2(mc.thePlayer.posZ - target.posZ, mc.thePlayer.posX - target.posX) * 180.0 / Math.PI - 90.0);
             
-            // Automated strafing logic
-            if (autoJiggle.get()) {
-                // If user is manually holding A or D, respect their override
-                if (mc.gameSettings.keyBindLeft.isKeyDown()) {
-                    event.setStrafe(1.0f);
-                } else if (mc.gameSettings.keyBindRight.isKeyDown()) {
-                    event.setStrafe(-1.0f);
+            // diff is how many degrees off from their center crosshair we are.
+            // Positive diff means we are to their left. Negative means we are to their right.
+            float diff = MathHelper.wrapAngleTo180_float(angleToUs - target.rotationYawHead);
+            
+            float absDiff = Math.abs(diff);
+            float currentTargetAngle = targetAngle.get();
+
+            // If we are too close to their center crosshair, strafe outward to reach the target angle.
+            if (absDiff < currentTargetAngle - angleBuffer) {
+                // If diff is positive (we are to their left), we want to strafe right to go further left (relative to them).
+                // Our right strafe (-1) moves us left from their perspective.
+                // Our left strafe (1) moves us right from their perspective.
+                // If diff > 0 (we are left of their crosshair), move further left -> setStrafe(1.0f)
+                // If diff < 0 (we are right of their crosshair), move further right -> setStrafe(-1.0f)
+                
+                if (diff > 0) {
+                    event.setStrafe(1.0f); // Strafe left (moves us to their left)
                 } else {
-                    // User is not pressing A/D, inject our automated jiggle strafe keypress
-                    event.setStrafe(strafeDirection);
+                    event.setStrafe(-1.0f); // Strafe right (moves us to their right)
                 }
+            } 
+            // If we are beyond the target angle, we could potentially strafe inward to maintain the exact angle,
+            // but usually it's better to just stop strafing and let forward momentum carry us,
+            // or just let the player naturally drift. 
+            // For edge-riding, we just stop forcing strafe if we've reached the safe zone.
+            else {
+                event.setStrafe(0.0f);
             }
         }
     }

@@ -73,7 +73,16 @@ public class JumpReset extends Module {
 
         // If we are in combo mode and have Combo Jumps enabled, automatically queue a jump on hit!
         if (comboJumps.get() && inComboMode) {
-            pendingComboJump = true;
+            // Only jump if it's a REAL hit. AutoClickers send attack packets even during i-frames.
+            // If they are in i-frames, the hit doesn't register on the server, so we shouldn't jump.
+            if (e.getTargetEntity() instanceof net.minecraft.entity.EntityLivingBase) {
+                net.minecraft.entity.EntityLivingBase target = (net.minecraft.entity.EntityLivingBase) e.getTargetEntity();
+                if (target.hurtTime <= 3) {
+                    pendingComboJump = true;
+                }
+            } else {
+                pendingComboJump = true;
+            }
         }
     }
 

@@ -6,6 +6,7 @@ import net.minecraft.network.play.client.C0BPacketEntityAction;
 import net.minecraft.util.MathHelper;
 import wtf.demise.events.annotations.EventTarget;
 import wtf.demise.events.impl.misc.GameEvent;
+import wtf.demise.events.impl.player.AttackEvent;
 import wtf.demise.events.impl.player.MoveInputEvent;
 import wtf.demise.events.impl.player.UpdateEvent;
 import wtf.demise.features.modules.Module;
@@ -34,7 +35,6 @@ public class SprintReset extends Module {
     private EntityLivingBase target;
     private long currentResetDelay;
     private int hitCount;
-    private int lastTargetHurtTime;
 
     @Override
     public void onDisable() {
@@ -47,50 +47,58 @@ public class SprintReset extends Module {
 
         target = PlayerUtils.getTarget(8, false);
 
-        if (target == null) {
-            return;
-        }
-
         // if out of combat for 5 seconds, reset hit counter for 100% initial burst
         if (combatTimer.hasTimeElapsed(5000)) {
             hitCount = 0;
         }
+    }
 
-        float calcYaw = (float) (MathHelper.atan2(mc.thePlayer.posZ - target.posZ, mc.thePlayer.posX - target.posX) * 180.0 / Math.PI - 90.0);
-        float diffX = Math.abs(MathHelper.wrapAngleTo180_float(calcYaw - target.rotationYawHead));
+    @EventTarget
+    public void onAttack(AttackEvent e) {
+        if (e.getTargetEntity() instanceof EntityLivingBase) {
+            EntityLivingBase attackedTarget = (EntityLivingBase) e.getTargetEntity();
+            
+            if (notWhileHurt.get() && mc.thePlayer.hurtTime != 0) {
+                return;
+            }
 
-        if ((diffCheck.get() && diffX > 120) || (notWhileHurt.get() && mc.thePlayer.hurtTime != 0)) {
-            return;
-        }
-
-        if (target.hurtTime == 10 && lastTargetHurtTime < 10) {
-            combatTimer.reset();
-            hitCount++;
-
-            // 100% chance for first 5 hits after 5s out-of-combat, then uses configured chance (default 70%)
-            int effectiveChance = (hitCount <= 5) ? 100 : (int) chance.get();
-
-            if (MathUtils.randomizeInt(1, 100) <= effectiveChance) {
-                currentResetDelay = (long) MathUtils.randomizeFloat(minReSprintTime.get(), maxReSprintTime.get());
-                switch (mode.get()) {
-                    case "WTap", "STap", "Sneak":
-                        timer.reset();
-                        break;
-                    case "Block":
-                        if (PlayerUtils.isHoldingSword()) {
-                            timer.reset();
-                        } else {
-                            reset(true);
-                        }
-                        break;
+            if (diffCheck.get()) {
+                float calcYaw = (float) (MathHelper.atan2(mc.thePlayer.posZ - attackedTarget.posZ, mc.thePlayer.posX - attackedTarget.posX) * 180.0 / Math.PI - 90.0);
+                float diffX = Math.abs(MathHelper.wrapAngleTo180_float(calcYaw - attackedTarget.rotationYawHead));
+                if (diffX > 120) {
+                    return;
                 }
+            }
+            
+            // Only sprint reset if this is a valid hit (avoids i-frame spam jumping from autoclickers)
+            if (attackedTarget.hurtTime <= 3) {
+                combatTimer.reset();
+                hitCount++;
 
-                if (!mode.is("WTap") && !mode.is("STap") && !mode.is("Block") && !mode.is("Sneak")) {
-                    reset(false);
+                // 100% chance for first 5 hits after 5s out-of-combat, then uses configured chance
+                int effectiveChance = (hitCount <= 5) ? 100 : (int) chance.get();
+
+                if (MathUtils.randomizeInt(1, 100) <= effectiveChance) {
+                    currentResetDelay = (long) MathUtils.randomizeFloat(minReSprintTime.get(), maxReSprintTime.get());
+                    switch (mode.get()) {
+                        case "WTap", "STap", "Sneak":
+                            timer.reset();
+                            break;
+                        case "Block":
+                            if (PlayerUtils.isHoldingSword()) {
+                                timer.reset();
+                            } else {
+                                reset(true);
+                            }
+                            break;
+                    }
+
+                    if (!mode.is("WTap") && !mode.is("STap") && !mode.is("Block") && !mode.is("Sneak")) {
+                        reset(false);
+                    }
                 }
             }
         }
-        lastTargetHurtTime = target.hurtTime;
     }
 
     private void reset(boolean fallback) {
