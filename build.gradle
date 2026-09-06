@@ -135,8 +135,9 @@ tasks.register('runClient', JavaExec) {
     workingDir = file("${project.rootDir}/run")
     
     jvmArgs = [
-        "-Xmx1G",
-        "-Xms512M",
+        "-Xmx2G",
+        "-Xms1G",
+        "-XX:MaxDirectMemorySize=2G",
         "-XX:+AllowEnhancedClassRedefinition"
     ]
     

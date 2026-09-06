@@ -50,7 +50,8 @@ public class ChunkRenderDispatcher {
         int j = Math.max(1, MathHelper.clamp_int(Runtime.getRuntime().availableProcessors() - 2, 1, i / 5));
 
         if (p_i4_1_ < 0) {
-            this.countRenderBuilders = MathHelper.clamp_int(j * 8, 1, i);
+            // cap render builders to at most two per active worker to prevent native memory exhaustion
+            this.countRenderBuilders = MathHelper.clamp_int(j * 2, 2, Math.min(12, i));
         } else {
             this.countRenderBuilders = p_i4_1_;
         }
