@@ -1,264 +1,217 @@
 package wtf.demise.features.modules.impl.combat;
 
+import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.util.AxisAlignedBB;
-import net.minecraft.util.MovementInput;
-import net.minecraft.util.Vec3;
-import org.apache.commons.lang3.Range;
+import net.minecraft.util.BlockPos;
+import net.minecraft.util.MovingObjectPosition;
+import org.lwjgl.opengl.GL11;
 import wtf.demise.Demise;
 import wtf.demise.events.annotations.EventTarget;
-import wtf.demise.events.impl.misc.GameEvent;
-import wtf.demise.events.impl.misc.TimerManipulationEvent;
-import wtf.demise.events.impl.player.MoveEvent;
+import wtf.demise.events.impl.misc.WorldChangeEvent;
+import wtf.demise.events.impl.player.AttackEvent;
 import wtf.demise.events.impl.player.UpdateEvent;
 import wtf.demise.events.impl.render.Render3DEvent;
 import wtf.demise.features.modules.Module;
 import wtf.demise.features.modules.ModuleInfo;
-import wtf.demise.features.modules.impl.legit.BackTrack;
 import wtf.demise.features.modules.impl.visual.Interface;
 import wtf.demise.features.values.impl.BoolValue;
 import wtf.demise.features.values.impl.ModeValue;
 import wtf.demise.features.values.impl.SliderValue;
 import wtf.demise.utils.math.TimerUtils;
+import wtf.demise.utils.packet.BlinkComponent;
 import wtf.demise.utils.player.PlayerUtils;
-import wtf.demise.utils.player.SimulatedPlayer;
-import wtf.demise.utils.player.rotation.RotationHandler;
 import wtf.demise.utils.render.RenderUtils;
 
 import java.awt.*;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
-@ModuleInfo(name = "TickBase", description = "Abuses tick manipulation in order to be unpredictable to your target.")
+import static org.lwjgl.opengl.GL11.GL_ALL_ATTRIB_BITS;
+
+@ModuleInfo(name = "TickBase", description = "Abuses packet choking and latency desync to make you laggy to opponents and burst attacks without freezing client side.")
 public class TickBase extends Module {
-    public final ModeValue mode = new ModeValue("Mode", new String[]{"Future", "Past"}, "Future", this);
-    private final BoolValue pauseRenderer = new BoolValue("Pause renderer", true, this, () -> mode.is("Future"));
-    private final SliderValue delay = new SliderValue("Delay", 50, 0, 1000, 50, this);
-    private final SliderValue tickRange = new SliderValue("Tick range", 3f, 0.1f, 8f, 0.1f, this);
-    private final SliderValue minRange = new SliderValue("Min range", 2.5f, 0.1f, 8f, 0.1f, this);
-    private final SliderValue stopRange = new SliderValue("Stop range", 2.5f, 0.1f, 8f, 0.1f, this);
-    private final SliderValue searchRange = new SliderValue("Search range", 7f, 0.1f, 15, 0.1f, this);
-    private final SliderValue maxTick = new SliderValue("Max ticks", 4, 1, 20, this);
-    private final BoolValue allowEarlyBreak = new BoolValue("Allow early break", false, this);
-    private final BoolValue prioritiseCrits = new BoolValue("Prioritise crits", false, this);
-    private final SliderValue hurtTimeToStop = new SliderValue("HurtTime to stop (>)", 0, 0, 10, 1, this);
-    private final SliderValue targetPredictionTicks = new SliderValue("Target prediction ticks", 4, 0, 20, 1, this);
-    private final BoolValue renderPredictedTargetPos = new BoolValue("Render predicted target pos", false, this);
-    private final BoolValue renderPredictedSelfPos = new BoolValue("Render predicted self pos", false, this);
-    private final BoolValue useBacktrackPos = new BoolValue("Use backtrack pos", false, this);
-    private final BoolValue teamCheck = new BoolValue("Team Check", false, this);
+    public final ModeValue mode = new ModeValue("Mode", new String[]{"Legit", "Blatant"}, "Legit", this);
+    private final SliderValue maxHoldMs = new SliderValue("Max hold ms", 200, 50, 500, 10, this);
+    private final SliderValue pulseDelay = new SliderValue("Pulse delay ms", 60, 0, 300, 10, this);
+    private final SliderValue startRange = new SliderValue("Start range", 5.0f, 3.0f, 8.0f, 0.1f, this);
+    private final SliderValue burstRange = new SliderValue("Burst range", 3.2f, 2.0f, 5.0f, 0.1f, this);
+    private final SliderValue burstHits = new SliderValue("Burst hits", 2, 1, 4, 1, this);
+    private final BoolValue hurtBreak = new BoolValue("Hurt break", true, this);
+    private final BoolValue teamCheck = new BoolValue("Team check", false, this);
+    private final BoolValue realPos = new BoolValue("Display real pos", true, this);
+    private final ModeValue renderMode = new ModeValue("Render mode", new String[]{"FakePlayer", "Box"}, "FakePlayer", this, realPos::get);
 
-    private final TimerUtils timer = new TimerUtils();
-    private int skippedTick = 0;
-    private long shifted, previousTime;
-    private final List<PlayerUtils.PredictProcess> selfPrediction = new ArrayList<>();
+    private final TimerUtils chokeTimer = new TimerUtils();
+    private final TimerUtils delayTimer = new TimerUtils();
     private EntityPlayer target;
-    public boolean working;
-    private int ticksToSkip;
-    private boolean firstAnimation;
+    private boolean choking = false;
+    private double serverX, serverY, serverZ;
 
     @Override
     public void onEnable() {
-        shifted = 0;
-        previousTime = 0;
+        // clear any existing buffered packets to ensure clean state initialization
+        releasePackets();
+        delayTimer.reset();
+    }
+
+    @Override
+    public void onDisable() {
+        // flush queued packets immediately upon disabling to prevent desync or rubberbanding
+        releasePackets();
+    }
+
+    @EventTarget
+    public void onWorldChange(WorldChangeEvent e) {
+        // flush buffered packets on map transitions or respawns to avoid invalid positions
+        releasePackets();
+    }
+
+    @EventTarget
+    public void onAttack(AttackEvent e) {
+        // in blatant mode, attacking manually triggers immediate packet release to burst hits
+        if (choking && mode.is("Blatant")) {
+            releaseAndBurst();
+        }
     }
 
     @EventTarget
     public void onUpdate(UpdateEvent e) {
         setTag(mode.get());
 
-        target = PlayerUtils.getTarget(searchRange.get(), teamCheck.get());
-    }
+        // acquire nearest target within engagement distance
+        target = PlayerUtils.getTarget(startRange.get() + 2.0, teamCheck.get());
 
-    @EventTarget
-    public void onTimerManipulation(TimerManipulationEvent e) {
-        if (mode.is("Past")) {
-            if (target == null || selfPrediction.isEmpty() || shouldStop()) {
-                return;
+        // emergency safety flush if player is invalid, dead, taking damage, or target is gone
+        if (mc.thePlayer == null || mc.theWorld == null || mc.thePlayer.isDead || target == null) {
+            if (choking) {
+                releasePackets();
             }
-
-            if (shouldStart() && timer.hasTimeElapsed(delay.get())) {
-                shifted += e.getTime() - previousTime;
-            }
-
-            if (shifted >= ticksToSkip * 50L) {
-                shifted = 0;
-                timer.reset();
-            }
-
-            previousTime = e.getTime();
-            e.setTime(e.getTime() - shifted);
-        }
-    }
-
-    @EventTarget
-    public void onMove(MoveEvent e) {
-        selfPrediction.clear();
-
-        MovementInput movementInput = new MovementInput();
-
-        movementInput.moveForward = mc.thePlayer.movementInput.moveForward;
-        movementInput.moveStrafe = 0;
-        movementInput.jump = mc.thePlayer.movementInput.jump;
-        movementInput.sneak = mc.thePlayer.movementInput.sneak;
-
-        SimulatedPlayer simulatedSelf = SimulatedPlayer.fromClientPlayer(movementInput, 1);
-
-        simulatedSelf.rotationYaw = RotationHandler.currentRotation != null ? RotationHandler.currentRotation[0] : mc.thePlayer.rotationYaw;
-
-        for (int i = 0; i < maxTick.get() + 1; i++) {
-            simulatedSelf.tick();
-
-            PlayerUtils.PredictProcess predictProcess = new PlayerUtils.PredictProcess(
-                    simulatedSelf.getPos(),
-                    simulatedSelf.fallDistance,
-                    simulatedSelf.onGround,
-                    simulatedSelf.isCollidedHorizontally
-            );
-
-            predictProcess.tick = i;
-
-            selfPrediction.add(predictProcess);
-        }
-    }
-
-    @EventTarget
-    public void onGame(GameEvent e) {
-        if (target == null || selfPrediction.isEmpty() || shouldStop()) {
             return;
         }
 
-        if (mode.is("Future")) {
-            if (timer.hasTimeElapsed(delay.get())) {
-                if (shouldStart()) {
-                    firstAnimation = false;
-                    skippedTick = 0;
-                    working = true;
-                    while (skippedTick < ticksToSkip && !shouldStop()) {
-                        skippedTick++;
-                        try {
-                            mc.runTick();
-                        } catch (IOException ex) {
-                            throw new RuntimeException(ex);
-                        }
-                    }
-
-                    working = false;
-                    timer.reset();
-                }
+        if (hurtBreak.get() && mc.thePlayer.hurtTime > 0) {
+            if (choking) {
+                releasePackets();
             }
-            working = false;
+            return;
+        }
+
+        double distance = PlayerUtils.getDistanceToEntityBox(target);
+
+        // enforce strict maximum choke duration so player is never stationary for more than configured threshold
+        if (choking && chokeTimer.hasTimeElapsed((long) maxHoldMs.get())) {
+            if (mode.is("Blatant") && distance <= burstRange.get()) {
+                releaseAndBurst();
+            } else {
+                releasePackets();
+            }
+            return;
+        }
+
+        if (mode.is("Legit")) {
+            // legit mode: micro-choke packets during active combat to desync hitbox without suspicious freezes
+            if (distance <= startRange.get() && distance >= 1.5) {
+                if (!choking && delayTimer.hasTimeElapsed((long) pulseDelay.get())) {
+                    startChoking();
+                } else if (choking && chokeTimer.hasTimeElapsed(Math.min((long) maxHoldMs.get(), 120L))) {
+                    releasePackets();
+                }
+            } else if (choking) {
+                releasePackets();
+            }
+        } else if (mode.is("Blatant")) {
+            // blatant mode: choke packets while closing the gap, then burst when entering strike range
+            if (distance <= startRange.get() && distance > burstRange.get()) {
+                if (!choking && delayTimer.hasTimeElapsed((long) pulseDelay.get())) {
+                    startChoking();
+                }
+            } else if (distance <= burstRange.get()) {
+                if (choking) {
+                    releaseAndBurst();
+                }
+            } else if (choking) {
+                releasePackets();
+            }
         }
     }
 
+    private void startChoking() {
+        // capture initial stationary coordinates visible to server and opponents
+        serverX = mc.thePlayer.posX;
+        serverY = mc.thePlayer.posY;
+        serverZ = mc.thePlayer.posZ;
+        choking = true;
+        BlinkComponent.blinking = true;
+        chokeTimer.reset();
+    }
+
+    private void releasePackets() {
+        // dispatch all accumulated outgoing packets to sync real position with server
+        if (choking) {
+            BlinkComponent.dispatch(true);
+            choking = false;
+            delayTimer.reset();
+        }
+    }
+
+    private void releaseAndBurst() {
+        // dispatch all choked packets in one single burst transmission
+        releasePackets();
+
+        // simulate rapid successive attacks on the synchronized target to deliver burst damage
+        if (target != null && PlayerUtils.getDistanceToEntityBox(target) <= burstRange.get() + 0.5) {
+            int hits = (int) burstHits.get();
+            for (int i = 0; i < hits; i++) {
+                if (mc.objectMouseOver != null && mc.objectMouseOver.typeOfHit == MovingObjectPosition.MovingObjectType.ENTITY) {
+                    mc.leftClickCounter = 0;
+                    mc.clickMouse();
+                    mc.leftClickCounter = 0;
+                }
+            }
+        }
+    }
 
     @EventTarget
     public void onRender3D(Render3DEvent e) {
-        if (renderPredictedSelfPos.get() && mc.gameSettings.thirdPersonView != 0) {
-            double x = selfPrediction.get(selfPrediction.size() - 1).position.xCoord - mc.getRenderManager().viewerPosX;
-            double y = selfPrediction.get(selfPrediction.size() - 1).position.yCoord - mc.getRenderManager().viewerPosY;
-            double z = selfPrediction.get(selfPrediction.size() - 1).position.zCoord - mc.getRenderManager().viewerPosZ;
-            AxisAlignedBB box = mc.thePlayer.getEntityBoundingBox().expand(0.1D, 0.1, 0.1);
-            AxisAlignedBB axis = new AxisAlignedBB(box.minX - mc.thePlayer.posX + x, box.minY - mc.thePlayer.posY + y, box.minZ - mc.thePlayer.posZ + z, box.maxX - mc.thePlayer.posX + x, box.maxY - mc.thePlayer.posY + y, box.maxZ - mc.thePlayer.posZ + z);
-            RenderUtils.drawAxisAlignedBB(axis, true, false, new Color(Demise.INSTANCE.getModuleManager().getModule(Interface.class).color(1, 100), true).getRGB());
-        }
+        // visual representation of the stationary ghost entity representing your position to enemies
+        if (realPos.get() && choking && mc.gameSettings.thirdPersonView != 0) {
+            double renderX = this.serverX - mc.getRenderManager().viewerPosX;
+            double renderY = this.serverY - mc.getRenderManager().viewerPosY;
+            double renderZ = this.serverZ - mc.getRenderManager().viewerPosZ;
 
-        if (renderPredictedTargetPos.get()) {
-            Vec3 prediction = target.getPositionVector().subtract(new Vec3(target.prevPosX, target.prevPosY, target.prevPosZ)).multiply(targetPredictionTicks.get());
-
-            AxisAlignedBB entityBoundingBox = target.getHitbox().offset(prediction);
-
-            double x = entityBoundingBox.getCenter().xCoord - mc.getRenderManager().viewerPosX;
-            double y = entityBoundingBox.minY - mc.getRenderManager().viewerPosY;
-            double z = entityBoundingBox.getCenter().zCoord - mc.getRenderManager().viewerPosZ;
-            AxisAlignedBB box = mc.thePlayer.getEntityBoundingBox().expand(0.1D, 0.1, 0.1);
-            AxisAlignedBB axis = new AxisAlignedBB(box.minX - mc.thePlayer.posX + x, box.minY - mc.thePlayer.posY + y, box.minZ - mc.thePlayer.posZ + z, box.maxX - mc.thePlayer.posX + x, box.maxY - mc.thePlayer.posY + y, box.maxZ - mc.thePlayer.posZ + z);
-            RenderUtils.drawAxisAlignedBB(axis, true, false, new Color(Demise.INSTANCE.getModuleManager().getModule(Interface.class).color(1, 100), true).getRGB());
-        }
-    }
-
-    private Vec3 getTargetPrediction() {
-        if (useBacktrackPos.get() && getModule(BackTrack.class).isEnabled()) {
-            Vec3 realPos = BackTrack.realPosition;
-            Vec3 realLastPos = BackTrack.realLastPos;
-            return realPos.subtract(new Vec3(realLastPos.xCoord, realLastPos.yCoord, realLastPos.zCoord))
-                    .multiply(targetPredictionTicks.get());
-        }
-        return target.getPositionVector()
-                .subtract(new Vec3(target.prevPosX, target.prevPosY, target.prevPosZ))
-                .multiply(targetPredictionTicks.get());
-    }
-
-    private boolean shouldStart() {
-        boolean picked = false;
-
-        for (PlayerUtils.PredictProcess predictProcess : selfPrediction) {
-            if (criteria(predictProcess.tick)) {
-                ticksToSkip = predictProcess.tick;
-                picked = true;
-
-                AxisAlignedBB entityBoundingBox = target.getHitbox().offset(getTargetPrediction());
-
-                double predictedSelfDistance = PlayerUtils.getDistToTargetFromMouseOver(selfPrediction.get(predictProcess.tick).position.add(0, mc.thePlayer.getEyeHeight(), 0), mc.thePlayer.getLook(1), target, entityBoundingBox);
-
-                if (predictProcess.fallDistance > 0 && prioritiseCrits.get()) {
+            switch (renderMode.get()) {
+                case "Box":
+                    AxisAlignedBB box = mc.thePlayer.getEntityBoundingBox().expand(0.1D, 0.1, 0.1);
+                    AxisAlignedBB axis = new AxisAlignedBB(
+                            box.minX - mc.thePlayer.posX + renderX,
+                            box.minY - mc.thePlayer.posY + renderY,
+                            box.minZ - mc.thePlayer.posZ + renderZ,
+                            box.maxX - mc.thePlayer.posX + renderX,
+                            box.maxY - mc.thePlayer.posY + renderY,
+                            box.maxZ - mc.thePlayer.posZ + renderZ
+                    );
+                    RenderUtils.drawAxisAlignedBB(axis, true, false, new Color(Demise.INSTANCE.getModuleManager().getModule(Interface.class).color(1, 150), true).getRGB());
                     break;
-                }
-
-                if (Range.between(tickRange.get(), tickRange.get() - 0.1f).contains((float) predictedSelfDistance) && allowEarlyBreak.get()) {
+                case "FakePlayer":
+                    GlStateManager.pushMatrix();
+                    GL11.glPushAttrib(GL_ALL_ATTRIB_BITS);
+                    float lightLevel = mc.theWorld.getLight(new BlockPos(mc.thePlayer.getPositionVector()));
+                    GlStateManager.color(lightLevel, lightLevel, lightLevel);
+                    mc.getRenderManager().doRenderEntity(mc.thePlayer, renderX, renderY, renderZ, mc.thePlayer.rotationYawHead, e.partialTicks(), true, true);
+                    GlStateManager.popAttrib();
+                    GlStateManager.popMatrix();
                     break;
-                }
             }
         }
-
-        if (!picked) {
-            ticksToSkip = (int) maxTick.get();
-        }
-
-        return criteria(ticksToSkip);
     }
 
-    private boolean criteria(int tick) {
-        AxisAlignedBB entityBoundingBox = target.getHitbox().offset(getTargetPrediction());
-
-        double predictedTargetDistance = PlayerUtils.getCustomDistanceToEntityBox(PlayerUtils.getPosFromAABB(entityBoundingBox).add(0, target.getEyeHeight(), 0), mc.thePlayer);
-        double predictedSelfDistance = PlayerUtils.getDistToTargetFromMouseOver(selfPrediction.get(tick).position.add(0, mc.thePlayer.getEyeHeight(), 0), mc.thePlayer.getLook(1), target, entityBoundingBox);
-
-        return predictedSelfDistance < predictedTargetDistance &&
-                predictedSelfDistance <= tickRange.get() &&
-                predictedSelfDistance > minRange.get() &&
-                predictedSelfDistance <= searchRange.get() &&
-                PlayerUtils.getDistanceToEntityBox(target) >= stopRange.get() &&
-                mc.thePlayer.canEntityBeSeen(target) &&
-                target.canEntityBeSeen(mc.thePlayer) &&
-                !selfPrediction.get(tick).isCollidedHorizontally &&
-                !mc.thePlayer.isCollidedHorizontally;
-    }
-
-    private boolean shouldStop() {
-        return mc.thePlayer.hurtTime > hurtTimeToStop.get();
-    }
-
+    // legacy bridge methods required by minecraft.java hooks to permanently prevent game loop stalls
     public boolean skipTick() {
-        if (mode.is("Future")) {
-            if (working || skippedTick < 0) return true;
-            if (isEnabled() && skippedTick > 0) {
-                --skippedTick;
-                return true;
-            }
-        }
+        // always return false to ensure client ticks run smoothly without any skipped movement
         return false;
     }
 
     public boolean freezeAnim() {
-        if (skippedTick != 0 && pauseRenderer.get()) {
-            if (!firstAnimation) {
-                firstAnimation = true;
-                return false;
-            }
-            return true;
-        }
+        // always return false to ensure camera updates and 3d world rendering never freeze
         return false;
     }
 }

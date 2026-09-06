@@ -64,6 +64,14 @@ public class TimerRange extends Module {
         balance = 0;
     }
 
+    @Override
+    public void onDisable() {
+        // ensure game speed immediately returns to normal whenever module is turned off
+        mc.timer.timerSpeed = 1.0f;
+        balance = 0;
+        working = false;
+    }
+
     @EventTarget
     public void onUpdate(UpdateEvent e) {
         setTag(String.valueOf(maxTick.get()));

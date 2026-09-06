@@ -23,7 +23,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class ModuleManager {
     private static final Set<Class<? extends Module>> COMBAT_MODULES = Set.of(
             AntiBot.class, Criticals.class, FakeLag.class, KeepSprint.class, KillAura.class, TickBase.class,
-            TimerRange.class, Velocity.class, LagRange.class, TrapBlock.class
+            Velocity.class, TrapBlock.class
     );
 
     private static final Set<Class<? extends Module>> LEGIT_MODULES = Set.of(
@@ -40,7 +40,8 @@ public class ModuleManager {
 
     private static final Set<Class<? extends Module>> PLAYER_MODULES = Set.of(
             AntiVoid.class, AutoTool.class, BedBreaker.class, FastBow.class, FastBreak.class, FastPlace.class,
-            FastUse.class, Manager.class, NoFall.class, Scaffold.class, Stealer.class, TellyBridge.class
+            FastUse.class, Manager.class, NoFall.class, Scaffold.class, Stealer.class, TellyBridge.class,
+            ClutchTimer.class
     );
 
     private static final Set<Class<? extends Module>> MISC_MODULES = Set.of(
