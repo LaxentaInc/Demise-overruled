@@ -640,7 +640,12 @@ public class RenderGlobal implements IWorldAccess, IResourceManagerReloadListene
 
                                 boolean flag5 = this.mc.getRenderViewEntity() instanceof EntityLivingBase && ((EntityLivingBase) this.mc.getRenderViewEntity()).isPlayerSleeping();
 
-                                if ((entity2 != this.mc.getRenderViewEntity() || flag8 || this.mc.gameSettings.thirdPersonView != 0 || flag5) && (entity2.posY < 0.0D || entity2.posY >= 256.0D || this.theWorld.isBlockLoaded(new BlockPos(entity2)))) {
+                                // zero-allocation chunk check to prevent allocating thousands of blockpos objects per frame
+                                int entityChunkX = MathHelper.floor_double(entity2.posX) >> 4;
+                                int entityChunkZ = MathHelper.floor_double(entity2.posZ) >> 4;
+                                boolean isEntityChunkLoaded = entity2.posY < 0.0D || entity2.posY >= 256.0D || this.theWorld.isChunkLoaded(entityChunkX, entityChunkZ, true);
+
+                                if ((entity2 != this.mc.getRenderViewEntity() || flag8 || this.mc.gameSettings.thirdPersonView != 0 || flag5) && isEntityChunkLoaded) {
                                     ++this.countEntitiesRendered;
                                     this.renderedEntity = entity2;
 

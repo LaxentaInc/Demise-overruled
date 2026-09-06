@@ -1160,6 +1160,11 @@ public class Config {
     }
 
     public static void checkGlError(String p_checkGlError_0_) {
+        // avoid expensive glgeterror queries and gpu pipeline stalls unless explicitly enabled
+        if (!isShowGlErrors()) {
+            return;
+        }
+
         int i = GlStateManager.glGetError();
 
         if (i != 0 && GlErrors.isEnabled(i)) {
@@ -1167,7 +1172,7 @@ public class Config {
             String s1 = String.format("OpenGL error: %s (%s), at: %s", i, s, p_checkGlError_0_);
             error(s1);
 
-            if (isShowGlErrors() && TimedEvent.isActive("ShowGlError", 10000L)) {
+            if (TimedEvent.isActive("ShowGlError", 10000L)) {
                 String s2 = I18n.format("of.message.openglError", i, s);
                 minecraft.ingameGUI.getChatGUI().printChatMessage(new ChatComponentText(s2));
             }

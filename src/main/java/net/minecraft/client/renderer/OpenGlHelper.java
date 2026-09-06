@@ -92,7 +92,8 @@ public class OpenGlHelper {
 
         boolean flag = openGL31 || contextcapabilities.GL_ARB_copy_buffer;
         boolean flag1 = contextcapabilities.OpenGL14;
-        vboRegions = flag && flag1;
+        // disable experimental vbo regions to prevent invalid enum errors and driver crashes
+        vboRegions = false;
 
         if (!vboRegions) {
             List<String> list = new ArrayList<>();
