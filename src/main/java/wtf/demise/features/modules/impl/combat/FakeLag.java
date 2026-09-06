@@ -33,7 +33,7 @@ import java.util.List;
 
 import static org.lwjgl.opengl.GL11.GL_ALL_ATTRIB_BITS;
 
-@ModuleInfo(name = "FakeLag", description = "Abuses latency in order to be unpredictable to your target.")
+@ModuleInfo(name = "FakeLag", description = "Abuses latency in order to be unpredictable to your target Explanation - LagRange and FakeLag manipulate your internet connection (network packets and latency).")
 public class FakeLag extends Module {
     private final ModeValue mode = new ModeValue("Mode", new String[]{"Pulse", "Spoof"}, "Pulse", this);
     private final BoolValue smart = new BoolValue("Smart", true, this);

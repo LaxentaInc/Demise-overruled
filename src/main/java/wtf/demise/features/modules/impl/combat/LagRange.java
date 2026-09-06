@@ -29,7 +29,7 @@ import java.awt.*;
 
 import static org.lwjgl.opengl.GL11.GL_ALL_ATTRIB_BITS;
 
-@ModuleInfo(name = "LagRange", description = "Abuses latency in order to simulate tickbasing.")
+@ModuleInfo(name = "LagRange", description = "Abuses latency in order to simulate tickbasing. Explaination - LagRange and FakeLag manipulate your internet connection (network packets and latency)")
 public class LagRange extends Module {
     private final SliderValue delay = new SliderValue("Delay", 50, 0, 1000, 50, this);
     private final SliderValue tickRange = new SliderValue("Attack range", 3f, 0.1f, 8f, 0.1f, this);

@@ -31,7 +31,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-@ModuleInfo(name = "TimerRange", description = "Abuses balance in order to be unpredictable to your target.")
+@ModuleInfo(name = "TimerRange", description = "Abuses balance in order to be unpredictable to your target - TimerRange manipulates your game speed (client ticks and balance).")
 public class TimerRange extends Module {
     private final BoolValue preload = new BoolValue("Preload", true, this);
     private final BoolValue alwaysGainBalance = new BoolValue("Always gain balance", false, this, preload::get);
