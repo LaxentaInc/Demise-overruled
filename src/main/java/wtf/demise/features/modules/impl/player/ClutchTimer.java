@@ -16,9 +16,9 @@ import wtf.demise.utils.player.PlayerUtils;
 
 @ModuleInfo(name = "ClutchTimer", description = "Slows down game time when falling off bridges or into void to give extra reaction time to clutch.")
 public class ClutchTimer extends Module {
-    private final SliderValue speed = new SliderValue("Timer speed", 0.5f, 0.1f, 0.9f, 0.05f, this);
-    private final SliderValue minDrop = new SliderValue("Min drop distance", 3.0f, 1.0f, 8.0f, 0.5f, this);
-    private final SliderValue minFallDistance = new SliderValue("Min fall distance", 0.6f, 0.1f, 3.0f, 0.1f, this);
+    private final SliderValue speed = new SliderValue("Timer speed", 0.51f, 0.1f, 0.9f, 0.01f, this);
+    private final SliderValue minDrop = new SliderValue("Min drop distance", 2.0f, 1.0f, 8.0f, 0.5f, this);
+    private final SliderValue minFallDistance = new SliderValue("Min fall distance", 0.4f, 0.1f, 3.0f, 0.05f, this);
     private final BoolValue syncPlacement = new BoolValue("Sync placement", true, this);
     private final BoolValue fastPlace = new BoolValue("Fast place", true, this);
     private final BoolValue voidOnly = new BoolValue("Void only", false, this);

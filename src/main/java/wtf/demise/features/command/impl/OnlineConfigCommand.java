@@ -40,26 +40,10 @@ public class OnlineConfigCommand extends Command {
     }
 
     private void loadConfig(String configName) {
-        try {
-            String normalizedConfigName = configName.toLowerCase(Locale.getDefault());
-            Optional<JsonObject> config = fetchConfig(normalizedConfigName);
-
-            config.ifPresent(jsonConfig -> {
-                if (Demise.INSTANCE.getConfigManager().loadOnlineConfig(
-                        Demise.INSTANCE.getConfigManager().getSetting(), jsonConfig)) {
-                    ChatUtils.sendMessageClient("Loaded config: " + configName);
-                } else {
-                    ChatUtils.sendMessageClient("Invalid config: " + configName);
-                }
-            });
-        } catch (IOException e) {
-            ChatUtils.sendMessageClient("Failed to load config: " + e.getMessage());
-        }
+        ChatUtils.sendMessageClient("Online cloud configs are disabled.");
     }
 
     private Optional<JsonObject> fetchConfig(String configName) throws IOException {
-        String url = Demise.INSTANCE.getCloud() + "/configs/" + configName + ".json";
-        String response = HttpUtils.get(url);
-        return Optional.of(new JsonParser().parse(response).getAsJsonObject());
+        return Optional.empty();
     }
 }

@@ -22,7 +22,6 @@ public final class CommandManager {
                 new FriendCommand(),
                 new ConfigCommand(),
                 new HWIDCommand(),
-                new OnlineConfigCommand(),
                 new JumpCommand()
         );
 
