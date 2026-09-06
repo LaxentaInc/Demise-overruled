@@ -61,10 +61,11 @@ public class Demise {
     private TrayIcon trayIcon;
 
     // start time tracking
-    private long startTime;
+    private int startTime;
+    private long startTimeLong;
 
     // load status
-    private boolean loaded = false;
+    private boolean loaded;
 
     private Path dataFolder;
 
