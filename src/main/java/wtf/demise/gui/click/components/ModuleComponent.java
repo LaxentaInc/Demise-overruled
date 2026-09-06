@@ -81,15 +81,12 @@ public class ModuleComponent implements IComponent {
             Fonts.interMedium.get(11).drawString(module.getName(), textX, textY, nameCol);
 
             // right side toggle indicator and settings dots
-            float rightPadding = 8.0f;
-            if (!settings.isEmpty()) {
-                // options button
-                float dotsX = x + width - 18.0f;
-                float dotsY = y + (height - Fonts.interBold.get(11).getHeight()) / 2.0f - 1.0f;
-                int dotsCol = optionsHovered ? Color.white.getRGB() : new Color(100, 105, 118).getRGB();
-                Fonts.interBold.get(11).drawString("•••", dotsX, dotsY, dotsCol);
-                rightPadding = 24.0f;
-            }
+            float rightPadding = 24.0f;
+            // options button is always drawn so every module's keybind and description are accessible
+            float dotsX = x + width - 18.0f;
+            float dotsY = y + (height - Fonts.interBold.get(11).getHeight()) / 2.0f - 1.0f;
+            int dotsCol = optionsHovered ? Color.white.getRGB() : new Color(100, 105, 118).getRGB();
+            Fonts.interBold.get(11).drawString("•••", dotsX, dotsY, dotsCol);
 
             // minimalist monochrome hardware switch indicator
             float switchW = 18.0f;
@@ -111,17 +108,15 @@ public class ModuleComponent implements IComponent {
     @Override
     public void drawScreen(int mouseX, int mouseY) {
         this.isHovered = MouseUtils.isHovered(x, y, width, height, mouseX, mouseY);
-        this.optionsHovered = !settings.isEmpty() && MouseUtils.isHovered(x + width - 24.0f, y, 24.0f, height, mouseX, mouseY);
+        this.optionsHovered = MouseUtils.isHovered(x + width - 24.0f, y, 24.0f, height, mouseX, mouseY);
     }
 
     @Override
     public void mouseClicked(int mouseX, int mouseY, int mouseButton) {
         if (visible && isHovered) {
-            // clicking the options dots or right clicking opens module settings drawer
+            // clicking the options dots or right clicking opens module settings drawer for any module
             if (optionsHovered || mouseButton == 1) {
-                if (!settings.isEmpty()) {
-                    PanelGui.focusedModule = this;
-                }
+                PanelGui.focusedModule = this;
                 return;
             }
 

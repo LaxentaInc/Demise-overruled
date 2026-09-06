@@ -29,7 +29,7 @@ public class ModuleManager {
     private static final Set<Class<? extends Module>> LEGIT_MODULES = Set.of(
             AimAssist.class, AutoClicker.class, AutoHeal.class, AutoRod.class, AutoWeapon.class, BackTrack.class,
             CombatHelper.class, HitBox.class, HitSelect.class, JumpReset.class, LegitScaffold.class, NoHitDelay.class,
-            Reach.class, SprintReset.class, LegitStrafe.class
+            Reach.class, SprintReset.class, LegitStrafe.class, Freelook.class, FreeCam.class
     );
 
     private static final Set<Class<? extends Module>> MOVEMENT_MODULES = Set.of(
@@ -59,10 +59,10 @@ public class ModuleManager {
     private static final Set<Class<? extends Module>> VISUAL_MODULES = Set.of(
             Atmosphere.class, Animations.class, BlockOverlay.class, Breadcrumbs.class, BreakProgress.class, Cape.class,
             ChestESP.class, ChinaHat.class, ClickGUI.class, CustomSkin.class, CustomWidgetsModule.class, NameTags.class,
-            ForceDinnerbone.class, FreeCam.class, FullBright.class, Interface.class, ItemESP.class, ItemPhysics.class,
+            ForceDinnerbone.class, FullBright.class, Interface.class, ItemESP.class, ItemPhysics.class,
             MainMenuOptions.class, MotionBlur.class, NoHurtCam.class, NoRenderOffsetReset.class,
             Rotation.class, Shaders.class, ThirdPersonDistance.class, Trajectories.class, ViewBobbing.class,
-            VisualAimPoint.class, TargetHud.class, RealPos.class, Freelook.class
+            VisualAimPoint.class, TargetHud.class, RealPos.class
     );
 
     private final Map<ModuleCategory, List<Module>> modulesByCategory;

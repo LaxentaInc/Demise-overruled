@@ -266,9 +266,69 @@ public class PanelGui extends GuiScreen {
                 selectedCategory.render(false);
                 selectedCategory.drawScreen(mouseX, mouseY);
             }
+
+            // draw rich floating tooltip describing the currently hovered module
+            drawModuleHoverTooltip(mouseX, mouseY);
         }
 
         RenderUtils.scaleEnd();
+    }
+
+    private void drawModuleHoverTooltip(int mouseX, int mouseY) {
+        ModuleComponent hoveredModule = null;
+        if (selectedCategory != null) {
+            for (ModuleComponent comp : selectedCategory.getModuleComponents()) {
+                if (comp.isVisible() && comp.isHovered()) {
+                    hoveredModule = comp;
+                    break;
+                }
+            }
+        } else if (selectedSearchCategory != null) {
+            for (ModuleComponent comp : searchCategoryComponent.getModuleComponents()) {
+                if (comp.isVisible() && comp.isHovered()) {
+                    hoveredModule = comp;
+                    break;
+                }
+            }
+        }
+
+        if (hoveredModule == null) {
+            return;
+        }
+
+        String desc = hoveredModule.getModule().getDescription();
+        if (desc == null || desc.isEmpty()) {
+            desc = "No description available.";
+        }
+
+        String name = hoveredModule.getModule().getName();
+        int key = hoveredModule.getModule().getKeyBind();
+        String keyStr = key == 0 ? "NONE" : Keyboard.getKeyName(key);
+        String bindTag = "[ " + (keyStr != null ? keyStr : "NONE") + " ]";
+
+        float nameW = Fonts.interBold.get(10).getStringWidth(name);
+        float bindW = Fonts.interMedium.get(9).getStringWidth(bindTag);
+        float descW = Fonts.interRegular.get(9).getStringWidth(desc);
+
+        float tipW = Math.max(nameW + bindW + 24.0f, descW + 18.0f);
+        float tipH = 28.0f;
+
+        float tipX = mouseX + 10.0f;
+        float tipY = mouseY + 10.0f;
+
+        ScaledResolution sr = new ScaledResolution(mc);
+        if (tipX + tipW > sr.getScaledWidth() - 8.0f) {
+            tipX = mouseX - tipW - 8.0f;
+        }
+        if (tipY + tipH > sr.getScaledHeight() - 8.0f) {
+            tipY = mouseY - tipH - 8.0f;
+        }
+
+        // render dark elevated tooltip box with crisp border
+        RoundedUtils.drawRoundOutline(tipX, tipY, tipW, tipH, 3.0f, 0.5f, new Color(12, 13, 17, 245), new Color(255, 255, 255, 30));
+        Fonts.interBold.get(10).drawString(name, tipX + 8.0f, tipY + 5.0f, Color.white.getRGB());
+        Fonts.interMedium.get(9).drawString(bindTag, tipX + tipW - bindW - 8.0f, tipY + 5.5f, new Color(150, 155, 170).getRGB());
+        Fonts.interRegular.get(9).drawString(desc, tipX + 8.0f, tipY + 16.0f, new Color(180, 185, 195).getRGB());
     }
 
     private void drawFocusedSettingsModal(int mouseX, int mouseY) {
@@ -308,8 +368,21 @@ public class PanelGui extends GuiScreen {
 
         RenderUtils.drawRect(modalX, modalY + 28.0f, modalW, 1.0f, new Color(255, 255, 255, 12).getRGB());
 
-        float settingsStartY = modalY + 34.0f;
-        float settingsViewH = modalH - 40.0f;
+        // render module description text below modal header line
+        String desc = focusedModule.getModule().getDescription();
+        boolean hasDesc = desc != null && !desc.isEmpty();
+        if (hasDesc) {
+            Fonts.interRegular.get(9).drawString(desc, modalX + 12.0f, modalY + 34.0f, new Color(150, 155, 170).getRGB());
+        }
+
+        float settingsStartY = modalY + (hasDesc ? 48.0f : 34.0f);
+        float settingsViewH = modalH - (hasDesc ? 54.0f : 40.0f);
+
+        // empty state message for modules that only configure keybinds
+        if (focusedModule.getSettings().isEmpty()) {
+            Fonts.interRegular.get(10).drawString("No configurable values for this module.", modalX + 12.0f, settingsStartY + 10.0f, new Color(140, 145, 158).getRGB());
+            Fonts.interRegular.get(9).drawString("Click the BIND button in the top-right above to change its key.", modalX + 12.0f, settingsStartY + 24.0f, new Color(100, 105, 115).getRGB());
+        }
 
         float totalH = 0.0f;
         for (Component comp : focusedModule.getSettings()) {
