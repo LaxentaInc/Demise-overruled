@@ -105,7 +105,6 @@ import wtf.demise.events.impl.misc.KeyPressEvent;
 import wtf.demise.events.impl.misc.StaticTickEvent;
 import wtf.demise.events.impl.misc.TickEvent;
 import wtf.demise.features.modules.impl.combat.TickBase;
-import wtf.demise.features.modules.impl.combat.TimerRange;
 import wtf.demise.features.modules.impl.legit.HitSelect;
 import wtf.demise.gui.mainmenu.GuiMainMenu;
 import wtf.demise.utils.render.RenderUtils;
@@ -796,7 +795,6 @@ public class Minecraft implements IThreadListener, IPlayerUsage {
         }
 
         TickBase tickBase = Demise.INSTANCE.getModuleManager().getModule(TickBase.class);
-        TimerRange timerRange = Demise.INSTANCE.getModuleManager().getModule(TimerRange.class);
 
         for (int j = 0; j < this.timer.elapsedTicks; ++j) {
             skippedTick = tickBase.skipTick();

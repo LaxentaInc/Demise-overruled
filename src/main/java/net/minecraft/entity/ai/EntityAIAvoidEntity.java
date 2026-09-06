@@ -28,7 +28,7 @@ public class EntityAIAvoidEntity<T extends Entity> extends EntityAIBase {
     }
 
     public EntityAIAvoidEntity(EntityCreature theEntityIn, Class<T> classToAvoidIn, Predicate<? super T> avoidTargetSelectorIn, float avoidDistanceIn, double farSpeedIn, double nearSpeedIn) {
-        this.canBeSeenSelector = p_apply_1_ -> p_apply_1_.isEntityAlive() && EntityAIAvoidEntity.this.theEntity.getEntitySenses().canSee(p_apply_1_);
+        // initialize the blank final creature reference prior to any lambda or field access
         this.theEntity = theEntityIn;
         this.classToAvoid = classToAvoidIn;
         this.avoidTargetSelector = avoidTargetSelectorIn;
@@ -37,6 +37,8 @@ public class EntityAIAvoidEntity<T extends Entity> extends EntityAIBase {
         this.nearSpeed = nearSpeedIn;
         this.entityPathNavigate = theEntityIn.getNavigator();
         this.setMutexBits(1);
+        // lambda captures theEntity after definite assignment to satisfy java language specification requirements
+        this.canBeSeenSelector = p_apply_1_ -> p_apply_1_.isEntityAlive() && EntityAIAvoidEntity.this.theEntity.getEntitySenses().canSee(p_apply_1_);
     }
 
     public boolean shouldExecute() {
