@@ -135,10 +135,10 @@ public class PanelGui extends GuiScreen {
         Color mainBg = new Color(14, 16, 20, 245);
         RoundedUtils.drawRoundOutline(posX, posY, width, height, 6.0f, 0.5f, mainBg, new Color(255, 255, 255, 15));
 
-        // Horizontal line separator for header
+        // horizontal line separator for header
         RenderUtils.drawRect(posX + 1.0f, posY + 40.0f, width - 2.0f, 1.0f, new Color(255, 255, 255, 12).getRGB());
 
-        // Header Title
+        // header title typography
         Fonts.interBold.get(16).drawString("DEMISE", posX + 16.0f, posY + 16.0f, Color.white.getRGB());
         Fonts.interRegular.get(16).drawString("CLIENT", posX + 18.0f + Fonts.interBold.get(16).getStringWidth("DEMISE"), posY + 16.0f, new Color(160, 165, 180, 200).getRGB());
 
@@ -148,7 +148,7 @@ public class PanelGui extends GuiScreen {
         boolean modsSelected = (selectedConfigCategory == null);
         boolean configsSelected = (selectedConfigCategory != null);
 
-        // Tabs: MODS and CONFIGS
+        // tabs: mods and configs
         String modsText = "M O D S";
         float modsWidth = Fonts.interMedium.get(10).getStringWidth(modsText) + 20.0f;
         if (modsSelected) {
@@ -167,7 +167,7 @@ public class PanelGui extends GuiScreen {
         }
         Fonts.interMedium.get(10).drawString(cfgText, navCenterX + modsWidth + 18.0f, navY + 7.0f, Color.white.getRGB());
 
-        // Close Button
+        // close button
         float closeBtnX = posX + width - 30.0f;
         float closeBtnY = posY + 9.0f;
         boolean closeHovered = MouseUtils.isHovered(closeBtnX, closeBtnY, 20.0f, 20.0f, mouseX, mouseY);
@@ -178,7 +178,7 @@ public class PanelGui extends GuiScreen {
         float sidebarY = posY + 41.0f;
         float sidebarH = height - 42.0f;
         
-        // Vertical line separator for sidebar
+        // vertical line separator for sidebar
         RenderUtils.drawRect(posX + sidebarW, sidebarY, 1.0f, sidebarH, new Color(255, 255, 255, 12).getRGB());
 
         float itemY = sidebarY + 8.0f;
