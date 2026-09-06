@@ -134,9 +134,8 @@ tasks.register('runClient', JavaExec) {
     mainClass = "Start"
     workingDir = file("${project.rootDir}/run")
     
-    // allocate memory and configure jvm debugging
     jvmArgs = [
-        "-Xmx2G",
+        "-Xmx1G",
         "-Xms512M",
         "-XX:+AllowEnhancedClassRedefinition"
     ]
