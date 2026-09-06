@@ -2,14 +2,12 @@ package wtf.demise.features.modules.impl.legit;
 
 import net.minecraft.util.MovingObjectPosition;
 import wtf.demise.events.annotations.EventTarget;
-import wtf.demise.events.impl.misc.GameEvent;
 import wtf.demise.events.impl.player.PlayerTickEvent;
 import wtf.demise.features.modules.Module;
 import wtf.demise.features.modules.ModuleInfo;
 import wtf.demise.features.values.impl.BoolValue;
 import wtf.demise.features.values.impl.SliderValue;
 import wtf.demise.utils.math.TimerUtils;
-import wtf.demise.utils.player.clicking.ClickHandler;
 
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -33,28 +31,40 @@ public class AutoClicker extends Module {
         rightTimer.reset();
     }
 
+    private long nextLeftDelay = 50;
     private long nextRightDelay = 50;
+
+    private boolean isLeftReady() {
+        return leftTimer.hasTimeElapsed(nextLeftDelay);
+    }
 
     private boolean isRightReady() {
         return rightTimer.hasTimeElapsed(nextRightDelay);
     }
 
     @EventTarget
-    public void onGameEvent(GameEvent e) {
-        if (left.get()) {
-            if (breakBlocks.get() && mc.objectMouseOver.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK)
-                return;
-
-            if (mc.gameSettings.keyBindAttack.isKeyDown()) {
-                // clicking using keybind, don't need raytrace etc. target is mc.thePlayer so you can always attack.
-                ClickHandler.initHandler(lminCPS.get(), lmaxCPS.get(), false, false, false, false, false, false, 3, 3, ClickHandler.ClickMode.Legit, mc.thePlayer);
-            }
-        }
-    }
-
-    @EventTarget
     public void onPlayerTick(PlayerTickEvent e) {
         if (e.state == PlayerTickEvent.State.PRE) {
+            
+            if (left.get()) {
+                if (mc.gameSettings.keyBindAttack.isKeyDown() && isLeftReady()) {
+                    boolean pointingAtBlock = mc.objectMouseOver != null && mc.objectMouseOver.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK;
+                    
+                    if (!(breakBlocks.get() && pointingAtBlock)) {
+                        if (mc.currentScreen == null) mc.clickMouse();
+                        leftTimer.reset();
+                        
+                        long minCps = (long) lminCPS.get();
+                        long maxCps = (long) lmaxCPS.get();
+                        if (minCps > maxCps) minCps = maxCps;
+                        
+                        long baseDelay = 1000L / ThreadLocalRandom.current().nextLong(minCps, maxCps + 1);
+                        long jitter = ThreadLocalRandom.current().nextLong(-11, 12);
+                        nextLeftDelay = Math.max(10, baseDelay + jitter);
+                    }
+                }
+            }
+            
             if (right.get()) {
                 if (mc.gameSettings.keyBindUseItem.isKeyDown() && isRightReady()) {
                     mc.rightClickMouse();
