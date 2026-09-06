@@ -116,6 +116,8 @@ public class Display {
         glfwWindowHint(GLFW_ICONIFIED, GLFW_FALSE);
         displayVisible = true;
         glfwWindowHint(GLFW_DECORATED, GLFW_TRUE);
+        // disable auto iconify so switching active applications does not minimize or discard the swapchain
+        glfwWindowHint(GLFW_AUTO_ICONIFY, GLFW_FALSE);
 
         glfwWindowHint(GLFW_SRGB_CAPABLE, GLFW_TRUE);
         glfwWindowHint(GLFW_DOUBLEBUFFER, GLFW_TRUE);
@@ -233,6 +235,11 @@ public class Display {
                 latestResized = true;
                 latestWidth = width;
                 latestHeight = height;
+                // record windowed bounds so exiting borderless fullscreen returns to accurate dimensions
+                if (!isFullscreenMode) {
+                    savedW[0] = width;
+                    savedH[0] = height;
+                }
             }
         };
 
@@ -242,6 +249,11 @@ public class Display {
             public void invoke(long window, int xpos, int ypos) {
                 displayX = xpos;
                 displayY = ypos;
+                // record windowed coordinates so exiting borderless fullscreen restores screen placement
+                if (!isFullscreenMode) {
+                    savedX[0] = xpos;
+                    savedY[0] = ypos;
+                }
             }
         };
 
@@ -478,10 +490,11 @@ public class Display {
         System.out.println("TODO: Implement Display.setDisplayModeAndFullscreen(DisplayMode)");
     }
 
-    private static final int[] savedX = new int[1];
-    private static final int[] savedY = new int[1];
-    private static final int[] savedW = new int[1];
-    private static final int[] savedH = new int[1];
+    private static boolean isFullscreenMode = false;
+    private static final int[] savedX = new int[]{100};
+    private static final int[] savedY = new int[]{100};
+    private static final int[] savedW = new int[]{1280};
+    private static final int[] savedH = new int[]{720};
 
     public static void setFullscreen(boolean fullscreen) {
         final long window = getWindow();
@@ -489,26 +502,40 @@ public class Display {
             startFullscreen = fullscreen;
             return;
         }
-        final boolean currentState = isFullscreen();
-        if (currentState == fullscreen) {
+        if (isFullscreenMode == fullscreen) {
             return;
         }
+        isFullscreenMode = fullscreen;
         if (fullscreen) {
             glfwGetWindowPos(window, savedX, savedY);
             glfwGetWindowSize(window, savedW, savedH);
             long monitorId = glfwGetPrimaryMonitor();
             final GLFWVidMode vidMode = glfwGetVideoMode(monitorId);
-            glfwSetWindowMonitor(window, monitorId, 0, 0, vidMode.width(), vidMode.height(), vidMode.refreshRate());
+            int[] mx = new int[1];
+            int[] my = new int[1];
+            glfwGetMonitorPos(monitorId, mx, my);
+
+            if (savedW[0] <= 0 || savedH[0] <= 0) {
+                savedW[0] = 1280;
+                savedH[0] = 720;
+                savedX[0] = mx[0] + (vidMode.width() - savedW[0]) / 2;
+                savedY[0] = my[0] + (vidMode.height() - savedH[0]) / 2;
+            }
+
+            // borderless windowed mode eliminates exclusive display mode switching, black screens, and driver stalls
+            glfwSetWindowAttrib(window, GLFW_DECORATED, GLFW_FALSE);
+            glfwSetWindowPos(window, mx[0], my[0]);
+            glfwSetWindowSize(window, vidMode.width(), vidMode.height());
         } else {
-            glfwSetWindowMonitor(window, NULL, savedX[0], savedY[0], savedW[0], savedH[0], 0);
+            // restore decorated frame and previous window coordinates
+            glfwSetWindowAttrib(window, GLFW_DECORATED, GLFW_TRUE);
+            glfwSetWindowPos(window, savedX[0], savedY[0]);
+            glfwSetWindowSize(window, savedW[0], savedH[0]);
         }
     }
 
     public static boolean isFullscreen() {
-        if (getWindow() != 0) {
-            return glfwGetWindowMonitor(getWindow()) != NULL;
-        }
-        return false;
+        return isFullscreenMode;
     }
 
     public static void setParent(Canvas parent) {

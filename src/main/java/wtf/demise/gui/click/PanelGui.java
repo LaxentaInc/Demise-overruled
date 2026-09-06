@@ -33,6 +33,8 @@ public class PanelGui extends GuiScreen {
     public static ConfigCategoryComponent selectedConfigCategory;
     public static SearchCategory selectedSearchCategory;
     public static ModuleComponent focusedModule = null;
+    // tracks whether the user clicked the bind button and the gui is awaiting key input
+    public static boolean bindingListening = false;
     public static boolean dragging;
     private float dragX, dragY;
     public static float posX = -1, posY = -1;
@@ -67,6 +69,7 @@ public class PanelGui extends GuiScreen {
         closing = false;
         interpolatedScale = 1.0f;
         focusedModule = null;
+        bindingListening = false;
 
         ScaledResolution sr = new ScaledResolution(mc);
         float screenW = sr.getScaledWidth();
@@ -282,6 +285,27 @@ public class PanelGui extends GuiScreen {
         Fonts.interMedium.get(10).drawString("← BACK", modalX + 11.0f, modalY + 10.5f, Color.white.getRGB());
 
         Fonts.interBold.get(12).drawString(focusedModule.getModule().getName() + " Settings", modalX + 64.0f, modalY + 10.0f, Color.white.getRGB());
+
+        // interactive module keybind capsule button placed in modal header row
+        int bindKey = focusedModule.getModule().getKeyBind();
+        String keyName = bindKey == 0 ? "NONE" : Keyboard.getKeyName(bindKey);
+        if (keyName == null) keyName = "NONE";
+        String bindText = bindingListening ? "BIND: ..." : "BIND: " + keyName;
+        float bindBtnW = Math.max(68.0f, Fonts.interMedium.get(10).getStringWidth(bindText) + 16.0f);
+        float bindBtnX = modalX + modalW - bindBtnW - 10.0f;
+        float bindBtnY = modalY + 6.0f;
+        float bindBtnH = 18.0f;
+
+        boolean bindHover = MouseUtils.isHovered(bindBtnX, bindBtnY, bindBtnW, bindBtnH, mouseX, mouseY);
+        Color bindBg = bindingListening
+                ? new Color(50, 56, 72, 255)
+                : (bindHover ? new Color(32, 36, 46, 255) : new Color(20, 23, 29, 240));
+        Color bindBorder = bindingListening
+                ? new Color(220, 225, 235, 160)
+                : new Color(255, 255, 255, 25);
+        RoundedUtils.drawRoundOutline(bindBtnX, bindBtnY, bindBtnW, bindBtnH, 2.0f, 0.5f, bindBg, bindBorder);
+        Fonts.interMedium.get(10).drawCenteredString(bindText, bindBtnX + bindBtnW / 2.0f, bindBtnY + 4.5f, bindingListening ? Color.white.getRGB() : new Color(200, 205, 215).getRGB());
+
         RenderUtils.drawRect(modalX, modalY + 28.0f, modalW, 1.0f, new Color(255, 255, 255, 12).getRGB());
 
         float settingsStartY = modalY + 34.0f;
@@ -437,7 +461,29 @@ public class PanelGui extends GuiScreen {
             float modalY = posY + 44.0f;
             if (MouseUtils.isHovered(modalX + 8.0f, modalY + 6.0f, 48.0f, 18.0f, mouseX, mouseY) && mouseButton == 0) {
                 focusedModule = null;
+                bindingListening = false;
                 return;
+            }
+
+            // detect clicks on the bind capsule button
+            float modalW = width - 142.0f;
+            int bindKey = focusedModule.getModule().getKeyBind();
+            String keyName = bindKey == 0 ? "NONE" : Keyboard.getKeyName(bindKey);
+            if (keyName == null) keyName = "NONE";
+            String bindText = bindingListening ? "BIND: ..." : "BIND: " + keyName;
+            float bindBtnW = Math.max(68.0f, Fonts.interMedium.get(10).getStringWidth(bindText) + 16.0f);
+            float bindBtnX = modalX + modalW - bindBtnW - 10.0f;
+            float bindBtnY = modalY + 6.0f;
+            float bindBtnH = 18.0f;
+
+            if (MouseUtils.isHovered(bindBtnX, bindBtnY, bindBtnW, bindBtnH, mouseX, mouseY) && mouseButton == 0) {
+                bindingListening = !bindingListening;
+                return;
+            }
+
+            // clicking outside the bind button cancels listening mode
+            if (bindingListening) {
+                bindingListening = false;
             }
 
             for (Component comp : focusedModule.getSettings()) {
@@ -489,6 +535,24 @@ public class PanelGui extends GuiScreen {
 
     @Override
     public void keyTyped(char typedChar, int keyCode) {
+        // intercept key press if actively listening for a module bind
+        if (focusedModule != null && bindingListening) {
+            if (keyCode == Keyboard.KEY_ESCAPE) {
+                bindingListening = false;
+                return;
+            }
+            if (keyCode == Keyboard.KEY_DELETE || keyCode == Keyboard.KEY_BACK) {
+                // unbind module if backspace or delete is pressed
+                focusedModule.getModule().setKeyBind(0);
+                bindingListening = false;
+                return;
+            }
+            // assign pressed keyboard keycode to module
+            focusedModule.getModule().setKeyBind(keyCode);
+            bindingListening = false;
+            return;
+        }
+
         if (keyCode == Keyboard.KEY_RSHIFT) {
             closing = !closing;
         }
@@ -496,6 +560,7 @@ public class PanelGui extends GuiScreen {
         if (keyCode == Keyboard.KEY_ESCAPE) {
             if (focusedModule != null) {
                 focusedModule = null;
+                bindingListening = false;
                 return;
             }
             closing = true;

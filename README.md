@@ -1,15 +1,14 @@
-# demise
+# Demise OverRuled By @Laxenta LLC. All rights reserved.
 A Minecraft client based around bypassing strict anticheats.
 I am scared if github removed accounts if i distribute the binary, i will provide it on the site. https://colorwall.xyz
 ### how to install?
-1) download the .jar from releases that match your os, and rename it to `demise` (keep the file extension the same plz)
-2) download the .json from `/json/demise.json`
-3) create a new folder in minecraft's version dir named `demise`, and put both of the files in there
-4) go on the vanilla mc launcher (sk, tl and others work too) and create a new installation using the `demise` version
-   <br> <b> make sure to use java 17 </b>
+1) So first of all, download the .jar from releases (i will upload it soon, if want it instantly js dm me on discord @laxenta.me), and rename it to `demise` whilst keeping the file extension same
+2) then go and download the .json from `/json/demise.json` or from Releases.
+3) create a new folder in minecraft version dir named `demise`, and put both of the files in there
+4) go on the your mc launcher (sk, tl idk whatever tf you use) and create a new installation using the `demise` version
 
 ### how to build?
-1) Make sure you have **Java 17 / JDK 17** installed (or point Gradle to your local JDK runtime).
+1) Make sure you have **Java 17 / JDK 17** installed.
 2) Clone the repository and navigate to the project directory.
 3) Run the Gradle `shadowJar` task to compile the client:
 
