@@ -45,7 +45,7 @@ public final class FakeWorld extends World {
     }
 
     @Override
-    protected boolean isChunkLoaded(int x, int z, boolean allowEmpty) {
+    public boolean isChunkLoaded(int x, int z, boolean allowEmpty) {
         return true;
     }
 
