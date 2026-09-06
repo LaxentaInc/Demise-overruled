@@ -57,15 +57,14 @@ public class Demise {
     private AltRepositoryGUI altRepositoryGUI;
     private DiscordInfo discordRP;
 
-    // System Tray icon
+    // system tray icon
     private TrayIcon trayIcon;
 
-    // Start time tracking
-    private int startTime;
-    private long startTimeLong;
+    // start time tracking
+    private long startTime;
 
-    // Load status
-    private boolean loaded;
+    // load status
+    private boolean loaded = false;
 
     private Path dataFolder;
 
