@@ -44,6 +44,8 @@ public class KeystrokeWidget extends Widget {
     }
 
     private void drawKeystrokes(boolean shader, boolean isGlow) {
+        clampToBounds();
+
         w.setPressed(mc.thePlayer.movementInput.moveForward > 0);
         a.setPressed(mc.thePlayer.movementInput.moveStrafe > 0);
         s.setPressed(mc.thePlayer.movementInput.moveForward < 0);

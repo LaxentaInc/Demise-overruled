@@ -6,7 +6,6 @@ import net.minecraft.potion.PotionEffect;
 import wtf.demise.events.impl.render.ShaderEvent;
 import wtf.demise.gui.font.Fonts;
 import wtf.demise.gui.widget.Widget;
-import wtf.demise.utils.animations.ContinualAnimation;
 import wtf.demise.utils.render.RoundedUtils;
 
 import java.awt.*;
@@ -15,26 +14,29 @@ import java.util.ArrayList;
 public class PotionHUDWidget extends Widget {
     public PotionHUDWidget() {
         super("Potion HUD");
-        this.x = 0.008333334f;
-        this.y = 0.05185188f;
+        this.x = 0.01f;
+        this.y = 0.14f;
     }
-
-    private final ContinualAnimation heightAnimation = new ContinualAnimation();
 
     @Override
     public void render() {
         ArrayList<PotionEffect> potions = new ArrayList<>(mc.thePlayer.getActivePotionEffects());
 
-        width = 92;
-        height = heightAnimation.getOutput();
+        this.width = 96;
+        this.height = Math.max(22, 22 + potions.size() * 11);
 
-        RoundedUtils.drawRound(renderX, renderY, width, height, 6, new Color(setting.bgColor(), true));
+        // prevent collision with the top left client watermark
+        if (renderX < 140 && renderY < 48) {
+            renderY = 48;
+        }
+        clampToBounds();
 
-        Fonts.interSemiBold.get(13).drawString("Potions", renderX + 8, renderY + 7 + 2, -1);
+        RoundedUtils.drawRound(renderX, renderY, width, height, 4, new Color(setting.bgColor(), true));
 
-        Fonts.nursultan.get(14).drawString("E", renderX + width - 16, renderY + 9, setting.color(0));
+        Fonts.interSemiBold.get(12).drawString("Potions", renderX + 8, renderY + 6, -1);
+        Fonts.nursultan.get(13).drawString("E", renderX + width - 15, renderY + 7, setting.color(0));
 
-        float offset = renderY + 21;
+        float offset = renderY + 18;
 
         for (PotionEffect potion : potions) {
             String name = I18n.format(Potion.potionTypes[potion.getPotionID()].getName()) + " " + (potion.getAmplifier() > 0 ? I18n.format("enchantment.level." + (potion.getAmplifier() + 1)) : "");
@@ -43,25 +45,27 @@ public class PotionHUDWidget extends Widget {
             Fonts.interRegular.get(11).drawStringWithShadow(name, renderX + 8, offset, -1);
             Fonts.interRegular.get(11).drawStringWithShadow(duration, renderX + width - 8 - Fonts.interRegular.get(11).getStringWidth(duration), offset, -1);
 
-            offset += 10;
+            offset += 11;
         }
-
-        heightAnimation.animate(20 + potions.size() * 10, 20);
     }
 
     @Override
     public void onShader(ShaderEvent event) {
         ArrayList<PotionEffect> potions = new ArrayList<>(mc.thePlayer.getActivePotionEffects());
-        width = 92;
-        height = heightAnimation.getOutput();
+        this.width = 96;
+        this.height = Math.max(22, 22 + potions.size() * 11);
+
+        // prevent collision with top left client watermark in shader passes
+        if (renderX < 140 && renderY < 48) {
+            renderY = 48;
+        }
+        clampToBounds();
 
         if (event.getShaderType() != ShaderEvent.ShaderType.GLOW) {
-            RoundedUtils.drawShaderRound(renderX, renderY, width, height, 6, Color.black);
+            RoundedUtils.drawShaderRound(renderX, renderY, width, height, 4, Color.black);
         } else {
-            RoundedUtils.drawGradientPreset(renderX, renderY, width, height, 6);
+            RoundedUtils.drawGradientPreset(renderX, renderY, width, height, 4);
         }
-
-        heightAnimation.animate(20 + potions.size() * 10, 20);
     }
 
     @Override

@@ -38,8 +38,6 @@ public class InfoWidget extends Widget {
     }
 
     private void draw(boolean shader, boolean isGlow) {
-        float x;
-
         long time = System.currentTimeMillis();
         leftClicks.removeIf(aLong -> aLong + 1000L < time);
         rightClicks.removeIf(aLong -> aLong + 1000L < time);
@@ -50,18 +48,17 @@ public class InfoWidget extends Widget {
         float width2 = Fonts.interRegular.get(15).getStringWidth(mc.thePlayer.getName()) + 16;
         float width3 = Fonts.interRegular.get(15).getStringWidth(cpsText) + 6;
 
-        if (renderX < sr.getScaledWidth() / 2f) {
-            x = renderX;
-        } else {
-            x = renderX + width - (width1 + width2 + width3 + 10);
-        }
-
+        float totalWidth = width1 + width2 + width3 + 10;
         float height = Fonts.interRegular.get(15).getHeight() + 5;
+
+        this.width = totalWidth;
+        this.height = height;
+        clampToBounds();
+
+        float x = renderX;
         float textY = (float) (renderY + Fonts.interRegular.get(15).getHeight() + 0.5 - Fonts.interRegular.get(15).getHeight() / 2f);
         float x1 = x + width3 + 5;
         float x2 = x1 + width1 + 5;
-
-        this.height = height;
 
         if (!shader) {
             RoundedUtils.drawRound(x, renderY, width3, height, 3, new Color(setting.bgColor(), true));

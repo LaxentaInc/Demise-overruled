@@ -31,14 +31,20 @@ public class ModuleListWidget extends Widget {
     public void render() {
         if (!shouldRender()) return;
 
+        List<Module> enabledModules = getEnabledModules();
+        int maxW = 0;
+        for (Module m : enabledModules) {
+            int w = getModuleWidth(m);
+            if (w > maxW) maxW = w;
+        }
+        this.width = Math.max(60, maxW);
+        this.height = enabledModules.size() * getModuleHeight();
+        clampToBounds();
+
         currX = renderX;
         currY = renderY;
 
-        this.height = getEnabledModules().size() * getModuleHeight();
-
         int middle = sr.getScaledWidth() / 2;
-        List<Module> enabledModules = getEnabledModules();
-
         float offset = 0;
 
         for (int i = 0; i < enabledModules.size(); i++) {
@@ -46,15 +52,8 @@ public class ModuleListWidget extends Widget {
             int width = getModuleWidth(module);
             int height = getModuleHeight();
 
-            RenderPosition position = calculateRenderPosition(module, width, middle);
-
-            renderModule(module, position.x, position.y, offset, width, height, middle, i, false, false);
-
-            if (!module.isHidden()) {
-                if (!(setting.hideRender.get() && Demise.INSTANCE.getModuleManager().getModulesByCategory().get(ModuleCategory.Visual).contains(module))) {
-                    offset = calculateNextOffset(module, height, offset);
-                }
-            }
+            renderModule(module, renderX, renderY, offset, width, height, middle, i, false, false);
+            offset += height;
         }
     }
 
@@ -62,9 +61,17 @@ public class ModuleListWidget extends Widget {
     public void onShader(ShaderEvent event) {
         if (!shouldRender()) return;
 
-        int middle = sr.getScaledWidth() / 2;
         List<Module> enabledModules = getEnabledModules();
+        int maxW = 0;
+        for (Module m : enabledModules) {
+            int w = getModuleWidth(m);
+            if (w > maxW) maxW = w;
+        }
+        this.width = Math.max(60, maxW);
+        this.height = enabledModules.size() * getModuleHeight();
+        clampToBounds();
 
+        int middle = sr.getScaledWidth() / 2;
         float offset = 0;
 
         for (int i = 0; i < enabledModules.size(); i++) {
@@ -72,27 +79,19 @@ public class ModuleListWidget extends Widget {
             int width = getModuleWidth(module);
             int height = getModuleHeight();
 
-            RenderPosition position = calculateRenderPosition(module, width, middle);
-
-            renderModule(module, position.x, position.y, offset, width, height, middle, i, true, event.getShaderType() == ShaderEvent.ShaderType.GLOW);
-
-            if (!module.isHidden()) {
-                if (!setting.hideRender.get() || !Demise.INSTANCE.getModuleManager().getModulesByCategory().get(ModuleCategory.Visual).contains(module)) {
-                    offset = calculateNextOffset(module, height, offset);
-                }
-            }
+            renderModule(module, renderX, renderY, offset, width, height, middle, i, true, event.getShaderType() == ShaderEvent.ShaderType.GLOW);
+            offset += height;
         }
     }
 
     public static List<Module> getEnabledModules() {
+        // retrieves currently active modules sorted by rendered text width for clean descending layout
         List<Module> enabledModules = new ArrayList<>();
         for (Module module : INSTANCE.getModuleManager().getModules()) {
             if (module.isHidden() || (setting.hideRender.get() && Demise.INSTANCE.getModuleManager().getModulesByCategory().get(ModuleCategory.Visual).contains(module))) {
                 continue;
             }
-            Animation moduleAnimation = module.getAnimation();
-            moduleAnimation.setDirection(module.isEnabled() ? Direction.FORWARDS : Direction.BACKWARDS);
-            if (!module.isEnabled() && moduleAnimation.finished(Direction.BACKWARDS)) continue;
+            if (!module.isEnabled()) continue;
             enabledModules.add(module);
         }
         enabledModules.sort(Comparator.comparing(ModuleListWidget::getModuleWidth).reversed());
@@ -109,31 +108,22 @@ public class ModuleListWidget extends Widget {
 
     private void renderModule(Module module, float localX, float localY, float offset, int width, int height, int middle, int index, boolean shader, boolean isGlow) {
         renderBackground(localX, localY, offset, width, height, middle, shader, isGlow);
-        renderText(module, localX, localY, offset, width - xPadding, middle, index, shader);
+        renderText(module, localX, localY, offset, width, middle, index, shader);
     }
 
     private void renderBackground(float localX, float localY, float offset, int width, int height, int middle, boolean shader, boolean isGlow) {
+        // computes horizontal anchor based on which half of the screen the widget occupies
+        float rectX = localX < middle ? localX : (localX + this.width - width);
+        float rectY = localY + offset;
+
         if (!shader) {
-            if (localX < middle) {
-                RenderUtils.drawRect(localX, localY + offset, width, height, setting.bgColor());
-            } else {
-                RenderUtils.drawRect(localX + this.width - width, localY + offset, width, height, setting.bgColor());
-            }
+            RenderUtils.drawRect(rectX, rectY, width, height, setting.bgColor());
         } else {
             if (!isGlow) {
-                if (localX < middle) {
-                    RenderUtils.drawRect(localX, localY + offset, width, height, Color.black.getRGB());
-                } else {
-                    RenderUtils.drawRect(localX + this.width - width, localY + offset, width, height, Color.black.getRGB());
-                }
+                RenderUtils.drawRect(rectX, rectY, width, height, Color.black.getRGB());
             } else {
                 int color = Demise.INSTANCE.getModuleManager().getModule(Shaders.class).syncColor.get() ? setting.color((int) localY) : Demise.INSTANCE.getModuleManager().getModule(Shaders.class).bloomColor.get().getRGB();
-
-                if (localX < middle) {
-                    RenderUtils.drawRect(localX, localY + offset, width, height, color);
-                } else {
-                    RenderUtils.drawRect(localX + this.width - width, localY + offset, width, height, color);
-                }
+                RenderUtils.drawRect(rectX, rectY, width, height, color);
             }
         }
     }
@@ -141,52 +131,15 @@ public class ModuleListWidget extends Widget {
     private void renderText(Module module, float localX, float localY, float offset, int width, int middle, int index, boolean shader) {
         String text = module.getName() + module.getTag();
         int color = setting.color(index);
-        float textY = localY + offset + 4 + (yPadding / 2f) - 1.3f;
-        float textX = localX - width + this.width - (xPadding / 2f) - 0.5f;
+        float textY = localY + offset + 3 + (yPadding / 2f);
+        // aligns text with padding inside the rendered rectangular segment
+        float textX = localX < middle ? (localX + (xPadding / 2f)) : (localX + this.width - width + (xPadding / 2f));
 
         if (!shader) {
-            if (localX < middle) {
-                setting.getFr().drawString(text, localX + (xPadding / 2f), textY, color);
-            } else {
-                setting.getFr().drawString(text, textX, textY, color);
-            }
+            setting.getFr().drawString(text, textX, textY, color);
         } else {
-            if (localX < middle) {
-                setting.getFr().drawString(text, localX + (xPadding / 2f), textY, Color.black.getRGB());
-            } else {
-                setting.getFr().drawString(text, textX, textY, Color.black.getRGB());
-            }
+            setting.getFr().drawString(text, textX, textY, Color.black.getRGB());
         }
-    }
-
-    private static class RenderPosition {
-        float x, y;
-
-        RenderPosition(float x, float y) {
-            this.x = x;
-            this.y = y;
-        }
-    }
-
-    private RenderPosition calculateRenderPosition(Module module, int width, int middle) {
-        float localX = renderX;
-        float localY = renderY;
-
-        float MOVE_IN_SCALE = 2.0f;
-
-        if (localX > middle) {
-            localX += (float) Math.abs(module.getAnimation().getOutput() - 1.0) *
-                    (MOVE_IN_SCALE + width);
-        } else {
-            localX -= (float) Math.abs((module.getAnimation().getOutput() - 1.0) *
-                    (MOVE_IN_SCALE + width));
-        }
-
-        return new RenderPosition(localX, localY);
-    }
-
-    private float calculateNextOffset(Module module, int height, float offset) {
-        return (float) (offset + ((module.getAnimation().getOutput()) * (height)));
     }
 
     @Override

@@ -1,10 +1,9 @@
 package wtf.demise.gui.click.components.impl;
 
-import net.minecraft.util.MathHelper;
+import org.lwjglx.input.Mouse;
 import wtf.demise.features.values.impl.SliderValue;
 import wtf.demise.gui.click.Component;
 import wtf.demise.gui.font.Fonts;
-import wtf.demise.utils.math.MathUtils;
 import wtf.demise.utils.math.TimerUtils;
 import wtf.demise.utils.misc.SoundUtil;
 import wtf.demise.utils.render.MouseUtils;
@@ -17,7 +16,6 @@ import java.math.RoundingMode;
 
 public class SliderComponent extends Component {
     private final SliderValue setting;
-    private float anim;
     private boolean dragging;
     private float previousSetting;
     private final TimerUtils soundTimer = new TimerUtils();
@@ -25,29 +23,44 @@ public class SliderComponent extends Component {
     public SliderComponent(SliderValue setting) {
         this.setting = setting;
         previousSetting = setting.get();
-        setHeight(Fonts.interRegular.get(15).getHeight() * 2 + Fonts.interRegular.get(15).getHeight() + 2);
+        setHeight(22.0f);
     }
 
     @Override
     public void drawScreen(int mouseX, int mouseY) {
-        Fonts.interRegular.get(15).drawString(setting.getName(), getX() + 4, getY(), -1);
+        // label and formatted value row
+        String valStr = (setting.getIncrement() % 1 == 0) ? String.format("%.0f", setting.get()) : String.valueOf(setting.get());
+        Fonts.interMedium.get(11).drawString(setting.getName(), getX() + 4, getY() + 2, new Color(200, 205, 215).getRGB());
+        Fonts.interRegular.get(11).drawString(valStr, getX() + getWidth() - 4 - Fonts.interRegular.get(11).getStringWidth(valStr), getY() + 2, new Color(130, 165, 240).getRGB());
 
-        anim = RenderUtils.animate(anim, (getWidth() - 8) * (setting.get() - setting.getMin()) / (setting.getMax() - setting.getMin()), 15);
-        float sliderWidth = anim;
+        float trackX = getX() + 4;
+        float trackY = getY() + 13.0f;
+        float trackW = getWidth() - 8;
+        float trackH = 3.0f;
 
-        RoundedUtils.drawRound(getX() + 4, getY() + Fonts.interRegular.get(15).getHeight() + 2, getWidth() - 8, 2, 1, Color.white.darker().darker().darker().darker());
-        RoundedUtils.drawRound(getX() + 4, getY() + Fonts.interRegular.get(15).getHeight() + 2, sliderWidth, 2, 1, Color.white.darker().darker());
-        RenderUtils.drawCircle(getX() + 4 + sliderWidth, getY() + Fonts.interRegular.get(15).getHeight() + 3, 0, 360, 2, 0.1f, true, Color.white.brighter().brighter().getRGB());
+        float range = setting.getMax() - setting.getMin();
+        float ratio = range > 0 ? (setting.get() - setting.getMin()) / range : 0;
+        float filledW = trackW * Math.max(0, Math.min(1, ratio));
 
-        Fonts.interRegular.get(15).drawString(setting.getMin() + "", getX() + 2, getY() + Fonts.interRegular.get(15).getHeight() * 2 + 2, new Color(160, 160, 160).getRGB());
-        Fonts.interRegular.get(15).drawCenteredString(setting.get() + "", getX() + getWidth() / 2, getY() + Fonts.interRegular.get(15).getHeight() * 2 + 2, -1);
-        Fonts.interRegular.get(15).drawString(setting.getMax() + "", getX() - 2 + getWidth() - Fonts.interRegular.get(15).getStringWidth(setting.getMax() + ""), getY() + Fonts.interRegular.get(15).getHeight() * 2 + 2, new Color(160, 160, 160).getRGB());
+        // crisp dark background track
+        RoundedUtils.drawRound(trackX, trackY, trackW, trackH, 1.5f, new Color(30, 32, 38, 240));
+        // accent progress bar
+        if (filledW > 0) {
+            RoundedUtils.drawRound(trackX, trackY, filledW, trackH, 1.5f, new Color(65, 125, 240, 255));
+            RenderUtils.drawCircle(trackX + filledW, trackY + 1.5f, 0, 360, 2.5f, 0.1f, true, Color.white.getRGB());
+        }
+
+        // safety release if mouse button was released outside the window
+        if (!Mouse.isButtonDown(0)) {
+            dragging = false;
+        }
 
         if (dragging) {
-            double clampedRatio = Math.max(0, Math.min(1, (mouseX - getX()) / (double) getWidth()));
-            double difference = setting.getMax() - setting.getMin(), value = setting.getMin() + clampedRatio * difference;
+            double clampedRatio = Math.max(0, Math.min(1, (mouseX - trackX) / (double) trackW));
+            double difference = setting.getMax() - setting.getMin();
+            double value = setting.getMin() + clampedRatio * difference;
 
-            setting.setValue(BigDecimal.valueOf(incValue(value, setting.getIncrement())).setScale(getDecimalPoints(String.valueOf(setting.getIncrement())), RoundingMode.CEILING).floatValue());
+            setting.setValue(BigDecimal.valueOf(incValue(value, setting.getIncrement())).setScale(getDecimalPoints(String.valueOf(setting.getIncrement())), RoundingMode.HALF_UP).floatValue());
 
             if (previousSetting != setting.get()) {
                 if (soundTimer.hasTimeElapsed(25)) {
@@ -67,14 +80,15 @@ public class SliderComponent extends Component {
         if (n.contains(".")) {
             return n.replaceAll(".*\\.(?=\\d?)", "").length();
         }
-
         return 0;
     }
 
     @Override
     public void mouseClicked(int mouseX, int mouseY, int mouseButton) {
-        if (mouseButton == 0 && MouseUtils.isHovered(getX() + 2, getY() + Fonts.interRegular.get(15).getHeight() + 2, getWidth(), 2, mouseX, mouseY))
+        // full component height hitbox for responsive clicking and dragging
+        if (mouseButton == 0 && MouseUtils.isHovered(getX(), getY(), getWidth(), getHeight(), mouseX, mouseY)) {
             dragging = true;
+        }
         super.mouseClicked(mouseX, mouseY, mouseButton);
     }
 

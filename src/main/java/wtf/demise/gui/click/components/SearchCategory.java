@@ -57,22 +57,22 @@ public class SearchCategory implements IComponent {
         if (isSelected) {
             handleScroll();
 
-            float startX = PanelGui.posX + 140.0f;
-            float componentStartY = PanelGui.posY + 74.0f;
-            float contentWidth = Math.max(130.0f, PanelGui.width - 150.0f);
-            float viewHeight = Math.max(100.0f, PanelGui.height - 84.0f);
+            float startX = PanelGui.posX + 136.0f;
+            float componentStartY = PanelGui.posY + 48.0f;
+            float contentWidth = Math.max(130.0f, PanelGui.width - 144.0f);
+            float viewHeight = Math.max(100.0f, PanelGui.height - 56.0f);
 
-            int cols = Math.max(1, (int) (contentWidth / 135.0f));
-            float colGap = 8.0f;
-            float rowGap = 8.0f;
+            int cols = contentWidth > 320.0f ? 2 : 1;
+            float colGap = 6.0f;
+            float rowGap = 4.0f;
             float cardWidth = (contentWidth - (cols - 1) * colGap) / cols;
-            float cardHeight = 115.0f;
+            float cardHeight = 26.0f;
 
             int totalRows = (moduleComponents.size() + cols - 1) / cols;
             float totalHeight = totalRows * cardHeight + Math.max(0, totalRows - 1) * rowGap;
 
             maxScroll = Math.max(0, totalHeight - viewHeight);
-            scrollOffset = MathUtils.interpolate(scrollOffset, targetScrollOffset, 0.15f);
+            scrollOffset = MathUtils.interpolate(scrollOffset, targetScrollOffset, 0.25f);
 
             RenderUtils.scissor(startX - 2.0f, componentStartY, contentWidth + 4.0f, viewHeight, PanelGui.interpolatedScale);
             GL11.glEnable(GL11.GL_SCISSOR_TEST);

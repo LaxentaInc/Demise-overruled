@@ -55,26 +55,38 @@ public abstract class Widget implements InstanceAccess {
         renderX = x * sr.getScaledWidth();
         renderY = y * sr.getScaledHeight();
 
+        if (align != (WidgetAlign.LEFT | WidgetAlign.TOP)) {
+            if ((align & WidgetAlign.RIGHT) != 0) {
+                renderX -= width;
+            } else if ((align & WidgetAlign.CENTER) != 0) {
+                renderX -= width / 2f;
+            }
+
+            if ((align & WidgetAlign.BOTTOM) != 0) {
+                renderY -= height;
+            } else if ((align & WidgetAlign.MIDDLE) != 0) {
+                renderY -= height / 2f;
+            }
+        }
+
+        clampToBounds();
+
         if (dragging) {
-            if (renderX < 0f) x = 0f;
-            if (renderX > sr.getScaledWidth() - width) x = (sr.getScaledWidth() - width) / sr.getScaledWidth();
-            if (renderY < 0f) y = 0f;
-            if (renderY > sr.getScaledHeight() - height) y = (sr.getScaledHeight() - height) / sr.getScaledHeight();
+            // sync normalized percentage coordinates with clamped screen bounds
+            if (sr.getScaledWidth() > 0) x = renderX / (float) sr.getScaledWidth();
+            if (sr.getScaledHeight() > 0) y = renderY / (float) sr.getScaledHeight();
         }
+    }
 
-        if (align == (WidgetAlign.LEFT | WidgetAlign.TOP)) return;
-
-        if ((align & WidgetAlign.RIGHT) != 0) {
-            renderX -= width;
-        } else if ((align & WidgetAlign.CENTER) != 0) {
-            renderX -= width / 2f;
+    public void clampToBounds() {
+        // ensures widget geometry never overflows past any border of the current scaled resolution viewport
+        if (sr == null) {
+            sr = new ScaledResolution(mc);
         }
-
-        if ((align & WidgetAlign.BOTTOM) != 0) {
-            renderY -= height;
-        } else if ((align & WidgetAlign.MIDDLE) != 0) {
-            renderY -= height / 2f;
-        }
+        float maxAllowedX = Math.max(2f, sr.getScaledWidth() - width - 2f);
+        float maxAllowedY = Math.max(2f, sr.getScaledHeight() - height - 2f);
+        renderX = Math.max(2f, Math.min(renderX, maxAllowedX));
+        renderY = Math.max(2f, Math.min(renderY, maxAllowedY));
     }
 
     public final void onChatGUI(int mouseX, int mouseY, boolean drag) {

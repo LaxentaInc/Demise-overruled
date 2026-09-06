@@ -65,7 +65,7 @@ public class PanelGui extends GuiScreen {
     @Override
     public void initGui() {
         closing = false;
-        interpolatedScale = 0;
+        interpolatedScale = 1.0f;
         focusedModule = null;
 
         ScaledResolution sr = new ScaledResolution(mc);
@@ -105,11 +105,14 @@ public class PanelGui extends GuiScreen {
 
     @Override
     public void drawScreen(int mouseX, int mouseY, float partialTicks) {
-        interpolatedScale = MathUtils.interpolate(interpolatedScale, !closing ? 1.0f : 0.0f, 0.25f);
-
-        if (interpolatedScale < 0.01f && closing) {
-            mc.displayGuiScreen(null);
-            return;
+        if (closing) {
+            interpolatedScale = MathUtils.interpolate(interpolatedScale, 0.0f, 0.4f);
+            if (interpolatedScale < 0.05f) {
+                mc.displayGuiScreen(null);
+                return;
+            }
+        } else {
+            interpolatedScale = 1.0f;
         }
 
         ScaledResolution sr = new ScaledResolution(mc);
@@ -129,15 +132,15 @@ public class PanelGui extends GuiScreen {
 
         RenderUtils.scaleStart(sr.getScaledWidth() / 2.0f, sr.getScaledHeight() / 2.0f, interpolatedScale);
 
-        Color mainBg = new Color(25, 25, 25, 160);
-        RoundedUtils.drawRoundOutline(posX, posY, width, height, 8.0f, 1.0f, mainBg, new Color(255, 255, 255, 30));
+        Color mainBg = new Color(14, 16, 20, 245);
+        RoundedUtils.drawRoundOutline(posX, posY, width, height, 6.0f, 0.5f, mainBg, new Color(255, 255, 255, 15));
 
         // Horizontal line separator for header
-        RenderUtils.drawRect(posX + 1.0f, posY + 40.0f, width - 2.0f, 1.0f, new Color(255, 255, 255, 30).getRGB());
+        RenderUtils.drawRect(posX + 1.0f, posY + 40.0f, width - 2.0f, 1.0f, new Color(255, 255, 255, 12).getRGB());
 
         // Header Title
-        Fonts.interBold.get(18).drawString("DEMISE", posX + 16.0f, posY + 16.0f, Color.white.getRGB());
-        Fonts.interRegular.get(18).drawString("CLIENT", posX + 18.0f + Fonts.interBold.get(18).getStringWidth("DEMISE"), posY + 16.0f, new Color(180, 185, 195, 200).getRGB());
+        Fonts.interBold.get(16).drawString("DEMISE", posX + 16.0f, posY + 16.0f, Color.white.getRGB());
+        Fonts.interRegular.get(16).drawString("CLIENT", posX + 18.0f + Fonts.interBold.get(16).getStringWidth("DEMISE"), posY + 16.0f, new Color(160, 165, 180, 200).getRGB());
 
         float navCenterX = posX + (width / 2.0f) - 95.0f;
         float navY = posY + 9.0f;
@@ -149,18 +152,18 @@ public class PanelGui extends GuiScreen {
         String modsText = "M O D S";
         float modsWidth = Fonts.interMedium.get(10).getStringWidth(modsText) + 20.0f;
         if (modsSelected) {
-            RoundedUtils.drawRound(navCenterX, navY, modsWidth, 22.0f, 4.0f, new Color(255, 255, 255, 40));
+            RoundedUtils.drawRound(navCenterX, navY, modsWidth, 22.0f, 3.0f, new Color(255, 255, 255, 30));
         } else {
-            RoundedUtils.drawRoundOutline(navCenterX, navY, modsWidth, 22.0f, 4.0f, 1.0f, new Color(0, 0, 0, 0), new Color(255, 255, 255, 40));
+            RoundedUtils.drawRoundOutline(navCenterX, navY, modsWidth, 22.0f, 3.0f, 0.5f, new Color(0, 0, 0, 0), new Color(255, 255, 255, 20));
         }
         Fonts.interMedium.get(10).drawString(modsText, navCenterX + 10.0f, navY + 7.0f, Color.white.getRGB());
 
         String cfgText = "C O N F I G S";
         float cfgWidth = Fonts.interMedium.get(10).getStringWidth(cfgText) + 20.0f;
         if (configsSelected) {
-            RoundedUtils.drawRound(navCenterX + modsWidth + 8.0f, navY, cfgWidth, 22.0f, 4.0f, new Color(255, 255, 255, 40));
+            RoundedUtils.drawRound(navCenterX + modsWidth + 8.0f, navY, cfgWidth, 22.0f, 3.0f, new Color(255, 255, 255, 30));
         } else {
-            RoundedUtils.drawRoundOutline(navCenterX + modsWidth + 8.0f, navY, cfgWidth, 22.0f, 4.0f, 1.0f, new Color(0, 0, 0, 0), new Color(255, 255, 255, 40));
+            RoundedUtils.drawRoundOutline(navCenterX + modsWidth + 8.0f, navY, cfgWidth, 22.0f, 3.0f, 0.5f, new Color(0, 0, 0, 0), new Color(255, 255, 255, 20));
         }
         Fonts.interMedium.get(10).drawString(cfgText, navCenterX + modsWidth + 18.0f, navY + 7.0f, Color.white.getRGB());
 
@@ -168,7 +171,7 @@ public class PanelGui extends GuiScreen {
         float closeBtnX = posX + width - 30.0f;
         float closeBtnY = posY + 9.0f;
         boolean closeHovered = MouseUtils.isHovered(closeBtnX, closeBtnY, 20.0f, 20.0f, mouseX, mouseY);
-        RoundedUtils.drawRoundOutline(closeBtnX, closeBtnY, 20.0f, 20.0f, 4.0f, 1.0f, closeHovered ? new Color(255, 255, 255, 40) : new Color(255, 255, 255, 10), new Color(255, 255, 255, 40));
+        RoundedUtils.drawRound(closeBtnX, closeBtnY, 20.0f, 20.0f, 3.0f, closeHovered ? new Color(255, 255, 255, 30) : new Color(25, 27, 34, 200));
         Fonts.interBold.get(11).drawString("X", closeBtnX + 6.5f, closeBtnY + 5.0f, Color.white.getRGB());
 
         float sidebarW = 125.0f;
@@ -176,7 +179,7 @@ public class PanelGui extends GuiScreen {
         float sidebarH = height - 42.0f;
         
         // Vertical line separator for sidebar
-        RenderUtils.drawRect(posX + sidebarW, sidebarY, 1.0f, sidebarH, new Color(255, 255, 255, 30).getRGB());
+        RenderUtils.drawRect(posX + sidebarW, sidebarY, 1.0f, sidebarH, new Color(255, 255, 255, 12).getRGB());
 
         float itemY = sidebarY + 8.0f;
         for (Category cat : categories) {
@@ -191,14 +194,14 @@ public class PanelGui extends GuiScreen {
             String catName = cat.getCategory().getName().substring(0, 1).toUpperCase() + cat.getCategory().getName().substring(1).toLowerCase();
             
             if (isSelected) {
-                RoundedUtils.drawRoundOutline(posX + 6.0f, itemY, sidebarW - 12.0f, 24.0f, 2.0f, 1.0f, new Color(255, 255, 255, 20), new Color(255, 255, 255, 40));
-                RenderUtils.drawRect(posX + 6.0f, itemY, 2.0f, 24.0f, new Color(255, 170, 0, 255).getRGB()); // Highlight left
+                RoundedUtils.drawRound(posX + 6.0f, itemY, sidebarW - 12.0f, 24.0f, 3.0f, new Color(28, 34, 48, 240));
+                RenderUtils.drawRect(posX + 6.0f, itemY + 4.0f, 2.0f, 16.0f, new Color(65, 125, 240, 255).getRGB());
                 Fonts.interMedium.get(12).drawString(catName, posX + 16.0f, itemY + 6.5f, Color.white.getRGB());
             } else {
                 if (isHovered) {
-                    RoundedUtils.drawRound(posX + 6.0f, itemY, sidebarW - 12.0f, 24.0f, 2.0f, new Color(255, 255, 255, 10));
+                    RoundedUtils.drawRound(posX + 6.0f, itemY, sidebarW - 12.0f, 24.0f, 3.0f, new Color(25, 27, 34, 200));
                 }
-                Fonts.interMedium.get(12).drawString(catName, posX + 16.0f, itemY + 6.5f, new Color(180, 185, 195, 200).getRGB());
+                Fonts.interMedium.get(12).drawString(catName, posX + 16.0f, itemY + 6.5f, new Color(160, 165, 175, 200).getRGB());
             }
 
             itemY += 27.0f;
@@ -256,23 +259,22 @@ public class PanelGui extends GuiScreen {
     }
 
     private void drawFocusedSettingsModal(int mouseX, int mouseY) {
-        float modalX = posX + 138.0f;
+        float modalX = posX + 136.0f;
         float modalY = posY + 46.0f;
-        float modalW = width - 146.0f;
+        float modalW = width - 144.0f;
         float modalH = height - 54.0f;
 
-        RoundedUtils.drawRound(modalX, modalY, modalW, modalH, 8.0f, new Color(18, 20, 25, 250));
-        RenderUtils.drawRect(modalX + 1.0f, modalY + 1.0f, modalW - 2.0f, 1.0f, new Color(50, 55, 68, 160).getRGB());
+        RoundedUtils.drawRoundOutline(modalX, modalY, modalW, modalH, 6.0f, 0.5f, new Color(14, 16, 20, 252), new Color(255, 255, 255, 15));
 
-        boolean backHover = MouseUtils.isHovered(modalX + 8.0f, modalY + 8.0f, 50.0f, 18.0f, mouseX, mouseY);
-        RoundedUtils.drawRound(modalX + 8.0f, modalY + 8.0f, 50.0f, 18.0f, 4.0f, backHover ? new Color(48, 53, 65, 240) : new Color(32, 35, 44, 200));
-        Fonts.interMedium.get(10).drawString("← BACK", modalX + 13.0f, modalY + 13.0f, Color.white.getRGB());
+        boolean backHover = MouseUtils.isHovered(modalX + 8.0f, modalY + 6.0f, 48.0f, 18.0f, mouseX, mouseY);
+        RoundedUtils.drawRound(modalX + 8.0f, modalY + 6.0f, 48.0f, 18.0f, 3.0f, backHover ? new Color(38, 44, 58, 240) : new Color(24, 27, 36, 220));
+        Fonts.interMedium.get(10).drawString("← BACK", modalX + 11.0f, modalY + 11.0f, Color.white.getRGB());
 
-        Fonts.interBold.get(13).drawString(focusedModule.getModule().getName() + " Settings", modalX + 66.0f, modalY + 12.0f, Color.white.getRGB());
-        RenderUtils.drawRect(modalX, modalY + 30.0f, modalW, 1.0f, new Color(38, 42, 50, 160).getRGB());
+        Fonts.interBold.get(12).drawString(focusedModule.getModule().getName() + " Settings", modalX + 64.0f, modalY + 10.0f, Color.white.getRGB());
+        RenderUtils.drawRect(modalX, modalY + 28.0f, modalW, 1.0f, new Color(255, 255, 255, 12).getRGB());
 
-        float settingsStartY = modalY + 36.0f;
-        float settingsViewH = modalH - 42.0f;
+        float settingsStartY = modalY + 34.0f;
+        float settingsViewH = modalH - 40.0f;
 
         float totalH = 0.0f;
         for (Component comp : focusedModule.getSettings()) {
@@ -282,7 +284,7 @@ public class PanelGui extends GuiScreen {
         }
 
         maxSettingsScroll = Math.max(0.0f, totalH - settingsViewH);
-        settingsScroll = MathUtils.interpolate(settingsScroll, targetSettingsScroll, 0.15f);
+        settingsScroll = MathUtils.interpolate(settingsScroll, targetSettingsScroll, 0.25f);
 
         RenderUtils.scissor(modalX, settingsStartY, modalW, settingsViewH, interpolatedScale);
         GL11.glEnable(GL11.GL_SCISSOR_TEST);
