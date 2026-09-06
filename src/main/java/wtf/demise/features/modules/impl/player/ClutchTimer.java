@@ -1,9 +1,12 @@
 package wtf.demise.features.modules.impl.player;
 
 import net.minecraft.block.BlockAir;
+import net.minecraft.network.play.client.C08PacketPlayerBlockPlacement;
 import net.minecraft.util.BlockPos;
+import org.lwjglx.input.Mouse;
 import wtf.demise.events.annotations.EventTarget;
 import wtf.demise.events.impl.misc.WorldChangeEvent;
+import wtf.demise.events.impl.packet.PacketEvent;
 import wtf.demise.events.impl.player.MotionEvent;
 import wtf.demise.features.modules.Module;
 import wtf.demise.features.modules.ModuleInfo;
@@ -15,10 +18,13 @@ import wtf.demise.utils.player.PlayerUtils;
 public class ClutchTimer extends Module {
     private final SliderValue speed = new SliderValue("Timer speed", 0.5f, 0.1f, 0.9f, 0.05f, this);
     private final SliderValue minDrop = new SliderValue("Min drop distance", 3.0f, 1.0f, 8.0f, 0.5f, this);
-    private final SliderValue minFallDistance = new SliderValue("Min fall distance", 0.8f, 0.2f, 3.0f, 0.1f, this);
+    private final SliderValue minFallDistance = new SliderValue("Min fall distance", 0.6f, 0.1f, 3.0f, 0.1f, this);
+    private final BoolValue syncPlacement = new BoolValue("Sync placement", true, this);
+    private final BoolValue fastPlace = new BoolValue("Fast place", true, this);
     private final BoolValue voidOnly = new BoolValue("Void only", false, this);
 
     private boolean active = false;
+    private long lastPlaceTime = 0L;
 
     @Override
     public void onDisable() {
@@ -30,6 +36,18 @@ public class ClutchTimer extends Module {
     public void onWorldChange(WorldChangeEvent e) {
         // ensure game speed returns to normal on world reloads or respawns
         resetTimer();
+        lastPlaceTime = 0L;
+    }
+
+    @EventTarget
+    public void onPacket(PacketEvent e) {
+        // capture outgoing block placement packets to synchronize tick rate with the server
+        if (e.getState() == PacketEvent.State.OUTGOING && e.getPacket() instanceof C08PacketPlayerBlockPlacement) {
+            if (syncPlacement.get()) {
+                lastPlaceTime = System.currentTimeMillis();
+                resetTimer();
+            }
+        }
     }
 
     @EventTarget
@@ -40,6 +58,20 @@ public class ClutchTimer extends Module {
 
         // guard clause: if on ground, on ladder, or in liquid, cancel slow motion and resume full speed
         if (mc.thePlayer == null || mc.theWorld == null || mc.thePlayer.onGround || mc.thePlayer.isOnLadder() || mc.thePlayer.isInWater() || mc.thePlayer.isInLava()) {
+            resetTimer();
+            return;
+        }
+
+        // handle right click interaction state and delay timer bypass
+        boolean isRightClicking = mc.gameSettings.keyBindUseItem.isKeyDown() || Mouse.isButtonDown(1);
+        if (isRightClicking && fastPlace.get()) {
+            // bypass vanilla four tick placement lockout to allow responsive clutching
+            mc.rightClickDelayTimer = 0;
+        }
+
+        // if the user is actively placing blocks or recently placed a block, restore vanilla tick rate
+        boolean isPlacingRecently = (System.currentTimeMillis() - lastPlaceTime) < 300L;
+        if (syncPlacement.get() && (isRightClicking || isPlacingRecently)) {
             resetTimer();
             return;
         }
@@ -90,3 +122,4 @@ public class ClutchTimer extends Module {
         }
     }
 }
+
