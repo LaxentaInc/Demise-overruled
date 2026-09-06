@@ -42,7 +42,7 @@ public class Demise {
     public static final Logger LOGGER = LogManager.getLogger(Demise.class);
     public static final Demise INSTANCE = new Demise();
     public final String clientName = "demise";
-    public final String version = "beta";
+    public final String version = "by laxenta LLC";
     public final String cloud = "https://larryngton2.github.io/demise-cloud/";
 
     private final File mainDir = new File(Minecraft.getMinecraft().mcDataDir, clientName);
