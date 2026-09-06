@@ -1299,9 +1299,17 @@ public class NetHandlerPlayClient implements INetHandlerPlayClient {
         ScorePlayerTeam scoreplayerteam;
 
         if (packetIn.getAction() == 0) {
-            scoreplayerteam = scoreboard.createTeam(packetIn.getName());
+            scoreplayerteam = scoreboard.getTeam(packetIn.getName());
+            if (scoreplayerteam == null) {
+                scoreplayerteam = scoreboard.createTeam(packetIn.getName());
+            }
         } else {
             scoreplayerteam = scoreboard.getTeam(packetIn.getName());
+        }
+
+        if (scoreplayerteam == null) {
+            // ignore packet if team does not exist on client to prevent null pointer exceptions
+            return;
         }
 
         if (packetIn.getAction() == 0 || packetIn.getAction() == 2) {

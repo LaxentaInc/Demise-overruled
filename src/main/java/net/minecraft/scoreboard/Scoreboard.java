@@ -180,7 +180,8 @@ public class Scoreboard {
             ScorePlayerTeam scoreplayerteam = this.getTeam(name);
 
             if (scoreplayerteam != null) {
-                throw new IllegalArgumentException("A team with the name '" + name + "' already exists!");
+                // reuse existing team if already registered to prevent client crash during minigame resets
+                return scoreplayerteam;
             } else {
                 scoreplayerteam = new ScorePlayerTeam(this, name);
                 this.teams.put(name, scoreplayerteam);

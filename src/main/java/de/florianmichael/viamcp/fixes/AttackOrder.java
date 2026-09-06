@@ -29,7 +29,10 @@ public class AttackOrder {
     private final static Minecraft mc = Minecraft.getMinecraft();
 
     public static void sendConditionalSwing(MovingObjectPosition mop) {
-        if (mop != null && mop.typeOfHit != MovingObjectPosition.MovingObjectType.ENTITY) mc.thePlayer.swingItem();
+        // ensure arm swings when raytrace result is null or hitting non-entities to register all air clicks
+        if (mop == null || mop.typeOfHit != MovingObjectPosition.MovingObjectType.ENTITY) {
+            mc.thePlayer.swingItem();
+        }
     }
 
     public static void sendFixedAttack(EntityPlayer entityIn, Entity target) {
