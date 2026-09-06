@@ -1825,7 +1825,8 @@ public class Config {
     }
 
     public static boolean isRenderRegions() {
-        return gameSettings.ofRenderRegions;
+        // permanently disabled to prevent unstable vboregion memory blitting and opengl 1280 errors
+        return false;
     }
 
     public static boolean isVbo() {
@@ -1833,7 +1834,8 @@ public class Config {
     }
 
     public static boolean isSmoothFps() {
-        return gameSettings.ofSmoothFps;
+        // permanently disabled to prevent blocking gpu finish calls and frame drops on integrated graphics
+        return false;
     }
 
     public static boolean openWebLink(URI p_openWebLink_0_) {
@@ -1848,7 +1850,8 @@ public class Config {
     }
 
     public static boolean isShowGlErrors() {
-        return gameSettings.ofShowGlErrors;
+        // permanently disabled to prevent chat spam and synchronous glgeterror pipeline stalls
+        return false;
     }
 
     public static String arrayToString(boolean[] p_arrayToString_0_, String p_arrayToString_1_) {

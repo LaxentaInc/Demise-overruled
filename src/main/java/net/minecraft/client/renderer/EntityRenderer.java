@@ -1364,12 +1364,6 @@ public class EntityRenderer implements IResourceManagerReloadListener {
         mc.mcProfiler.endStartSection("terrain");
         Lagometer.timerTerrain.start();
 
-        if (mc.gameSettings.ofSmoothFps && pass > 0) {
-            mc.mcProfiler.endStartSection("finish");
-            GL11.glFinish();
-            mc.mcProfiler.endStartSection("terrain");
-        }
-
         GlStateManager.matrixMode(5888);
         GlStateManager.pushMatrix();
         GlStateManager.disableAlpha();
