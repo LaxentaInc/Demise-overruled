@@ -63,25 +63,20 @@ public class ModuleComponent implements IComponent {
     public void render(boolean shader) {
         boolean enabled = module.isEnabled();
         if (!shader) {
-            // crisp dark rectangular card background
+            // sharp minimalist rectangular card background with subtle border
             Color cardBg = enabled ?
-                    (isHovered ? new Color(28, 36, 52, 230) : new Color(22, 28, 42, 220)) :
-                    (isHovered ? new Color(28, 30, 36, 230) : new Color(18, 20, 24, 200));
+                    (isHovered ? new Color(24, 26, 32, 255) : new Color(18, 20, 25, 255)) :
+                    (isHovered ? new Color(20, 21, 26, 255) : new Color(14, 15, 18, 255));
 
             Color borderCol = enabled ?
-                    new Color(65, 125, 240, 110) :
-                    (isHovered ? new Color(255, 255, 255, 25) : new Color(255, 255, 255, 10));
+                    new Color(255, 255, 255, 28) :
+                    (isHovered ? new Color(255, 255, 255, 18) : new Color(255, 255, 255, 8));
 
-            RoundedUtils.drawRoundOutline(x, y, width, height, 4.0f, 0.5f, cardBg, borderCol);
+            RoundedUtils.drawRoundOutline(x, y, width, height, 2.0f, 0.5f, cardBg, borderCol);
 
-            // subtle accent indicator bar on left when enabled
-            if (enabled) {
-                RoundedUtils.drawRound(x + 1.0f, y + 4.0f, 2.5f, height - 8.0f, 1.0f, new Color(65, 125, 240, 255));
-            }
-
-            // crisp module name typography
-            int nameCol = enabled ? Color.white.getRGB() : (isHovered ? new Color(210, 215, 225).getRGB() : new Color(160, 165, 175).getRGB());
-            float textX = x + (enabled ? 9.0f : 8.0f);
+            // clean module name typography with uniform margin
+            int nameCol = enabled ? Color.white.getRGB() : (isHovered ? new Color(215, 220, 230).getRGB() : new Color(150, 155, 165).getRGB());
+            float textX = x + 10.0f;
             float textY = y + (height - Fonts.interMedium.get(11).getHeight()) / 2.0f;
             Fonts.interMedium.get(11).drawString(module.getName(), textX, textY, nameCol);
 
@@ -91,23 +86,25 @@ public class ModuleComponent implements IComponent {
                 // options button
                 float dotsX = x + width - 18.0f;
                 float dotsY = y + (height - Fonts.interBold.get(11).getHeight()) / 2.0f - 1.0f;
-                int dotsCol = optionsHovered ? Color.white.getRGB() : new Color(110, 115, 130).getRGB();
+                int dotsCol = optionsHovered ? Color.white.getRGB() : new Color(100, 105, 118).getRGB();
                 Fonts.interBold.get(11).drawString("•••", dotsX, dotsY, dotsCol);
                 rightPadding = 24.0f;
             }
 
-            // toggle badge / indicator
-            float switchW = 20.0f;
-            float switchH = 10.0f;
+            // minimalist monochrome hardware switch indicator
+            float switchW = 18.0f;
+            float switchH = 9.0f;
             float switchX = x + width - rightPadding - switchW;
             float switchY = y + (height - switchH) / 2.0f;
 
-            Color switchBg = enabled ? new Color(65, 125, 240, 255) : new Color(38, 41, 50, 220);
-            RoundedUtils.drawRound(switchX, switchY, switchW, switchH, 5.0f, switchBg);
-            float knobX = enabled ? (switchX + switchW - 8.0f) : (switchX + 2.0f);
-            RoundedUtils.drawRound(knobX, switchY + 2.0f, 6.0f, 6.0f, 3.0f, Color.white);
+            Color switchTrack = enabled ? new Color(220, 225, 235, 255) : new Color(30, 32, 38, 255);
+            Color switchKnob = enabled ? new Color(16, 18, 22, 255) : new Color(130, 135, 145, 255);
+
+            RoundedUtils.drawRound(switchX, switchY, switchW, switchH, 2.0f, switchTrack);
+            float knobX = enabled ? (switchX + switchW - 7.0f) : (switchX + 1.5f);
+            RoundedUtils.drawRound(knobX, switchY + 1.5f, 5.5f, 6.0f, 1.5f, switchKnob);
         } else {
-            RoundedUtils.drawShaderRound(x, y, width, height, 4.0f, Color.black);
+            RoundedUtils.drawShaderRound(x, y, width, height, 2.0f, Color.black);
         }
     }
 

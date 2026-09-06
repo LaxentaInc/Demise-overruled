@@ -26,16 +26,29 @@ public class BooleanComponent extends Component {
     public void drawScreen(int mouseX, int mouseY) {
         this.toggleAnimation.setDirection(this.setting.get() ? Direction.FORWARDS : Direction.BACKWARDS);
 
-        Fonts.interRegular.get(15).drawString(setting.getName(), getX() + 4, getY() + 2.5f, -1);
+        // setting label with clean typography
+        Fonts.interMedium.get(11).drawString(setting.getName(), getX() + 4.0f, getY() + 3.0f, Color.white.getRGB());
 
-        RoundedUtils.drawRound(getX() + getWidth() - 15.5f, getY() + 2.5f, 13f, 5, 2.25f, ColorUtils.interpolateColorC(new Color(128, 128, 128, 255), Color.white, (float) toggleAnimation.getOutput()).darker());
-        RoundedUtils.drawRound(getX() + getWidth() - 15.5f + 8 * (float) toggleAnimation.getOutput(), getY() + 2.5f, 5, 5, 2.25f, Color.WHITE);
+        float switchW = 18.0f;
+        float switchH = 9.0f;
+        float switchX = getX() + getWidth() - switchW - 4.0f;
+        float switchY = getY() + (getHeight() - switchH) / 2.0f;
+
+        float anim = (float) toggleAnimation.getOutput();
+        Color trackBg = ColorUtils.interpolateColorC(new Color(30, 32, 38, 255), new Color(220, 225, 235, 255), anim);
+        Color knobColor = ColorUtils.interpolateColorC(new Color(130, 135, 145, 255), new Color(16, 18, 22, 255), anim);
+
+        RoundedUtils.drawRound(switchX, switchY, switchW, switchH, 2.0f, trackBg);
+        float knobX = switchX + 1.5f + 9.5f * anim;
+        RoundedUtils.drawRound(knobX, switchY + 1.5f, 5.5f, 6.0f, 1.5f, knobColor);
+
         super.drawScreen(mouseX, mouseY);
     }
 
     @Override
     public void mouseClicked(int mouseX, int mouseY, int mouseButton) {
-        if (MouseUtils.isHovered(getX() + getWidth() - 17.5f, getY() + 2.5f, 12.5f, 5, mouseX, mouseY) && mouseButton == 0) {
+        // responsive click on the entire row rather than tiny switch
+        if (mouseButton == 0 && MouseUtils.isHovered(getX(), getY(), getWidth(), getHeight(), mouseX, mouseY)) {
             this.setting.set(!this.setting.get());
             SoundUtil.playSound("demise.tick");
         }

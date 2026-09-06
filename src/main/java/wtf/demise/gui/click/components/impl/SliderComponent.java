@@ -28,10 +28,10 @@ public class SliderComponent extends Component {
 
     @Override
     public void drawScreen(int mouseX, int mouseY) {
-        // label and formatted value row
+        // label and formatted value readout
         String valStr = (setting.getIncrement() % 1 == 0) ? String.format("%.0f", setting.get()) : String.valueOf(setting.get());
         Fonts.interMedium.get(11).drawString(setting.getName(), getX() + 4, getY() + 2, new Color(200, 205, 215).getRGB());
-        Fonts.interRegular.get(11).drawString(valStr, getX() + getWidth() - 4 - Fonts.interRegular.get(11).getStringWidth(valStr), getY() + 2, new Color(130, 165, 240).getRGB());
+        Fonts.interRegular.get(11).drawString(valStr, getX() + getWidth() - 4 - Fonts.interRegular.get(11).getStringWidth(valStr), getY() + 2, new Color(175, 180, 192).getRGB());
 
         float trackX = getX() + 4;
         float trackY = getY() + 13.0f;
@@ -42,11 +42,11 @@ public class SliderComponent extends Component {
         float ratio = range > 0 ? (setting.get() - setting.getMin()) / range : 0;
         float filledW = trackW * Math.max(0, Math.min(1, ratio));
 
-        // crisp dark background track
-        RoundedUtils.drawRound(trackX, trackY, trackW, trackH, 1.5f, new Color(30, 32, 38, 240));
-        // accent progress bar
+        // sharp dark background track
+        RoundedUtils.drawRound(trackX, trackY, trackW, trackH, 1.0f, new Color(26, 28, 34, 255));
+        // minimalist silver progress bar and knob
         if (filledW > 0) {
-            RoundedUtils.drawRound(trackX, trackY, filledW, trackH, 1.5f, new Color(65, 125, 240, 255));
+            RoundedUtils.drawRound(trackX, trackY, filledW, trackH, 1.0f, new Color(215, 220, 230, 255));
             RenderUtils.drawCircle(trackX + filledW, trackY + 1.5f, 0, 360, 2.5f, 0.1f, true, Color.white.getRGB());
         }
 

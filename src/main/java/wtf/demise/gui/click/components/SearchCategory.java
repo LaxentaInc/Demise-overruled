@@ -58,9 +58,10 @@ public class SearchCategory implements IComponent {
             handleScroll();
 
             float startX = PanelGui.posX + 136.0f;
-            float componentStartY = PanelGui.posY + 48.0f;
+            // start search results below the dedicated search subheader row
+            float componentStartY = PanelGui.posY + 74.0f;
             float contentWidth = Math.max(130.0f, PanelGui.width - 144.0f);
-            float viewHeight = Math.max(100.0f, PanelGui.height - 56.0f);
+            float viewHeight = Math.max(80.0f, PanelGui.height - 82.0f);
 
             int cols = contentWidth > 320.0f ? 2 : 1;
             float colGap = 6.0f;

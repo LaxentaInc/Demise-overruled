@@ -181,10 +181,10 @@ public class PanelGui extends GuiScreen {
         // vertical line separator for sidebar
         RenderUtils.drawRect(posX + sidebarW, sidebarY, 1.0f, sidebarH, new Color(255, 255, 255, 12).getRGB());
 
-        float itemY = sidebarY + 8.0f;
+        float itemY = sidebarY + 6.0f;
         for (Category cat : categories) {
             boolean isSelected = (selectedCategory == cat && selectedConfigCategory == null && selectedSearchCategory == null);
-            boolean isHovered = MouseUtils.isHovered(posX + 6.0f, itemY, sidebarW - 12.0f, 24.0f, mouseX, mouseY);
+            boolean isHovered = MouseUtils.isHovered(posX + 6.0f, itemY, sidebarW - 12.0f, 19.0f, mouseX, mouseY);
 
             cat.setX(posX + 6.0f);
             cat.setY(itemY);
@@ -192,83 +192,94 @@ public class PanelGui extends GuiScreen {
             cat.setSelected(isSelected);
 
             String catName = cat.getCategory().getName().substring(0, 1).toUpperCase() + cat.getCategory().getName().substring(1).toLowerCase();
-            
+
             if (isSelected) {
-                RoundedUtils.drawRound(posX + 6.0f, itemY, sidebarW - 12.0f, 24.0f, 3.0f, new Color(28, 34, 48, 240));
-                RenderUtils.drawRect(posX + 6.0f, itemY + 4.0f, 2.0f, 16.0f, new Color(65, 125, 240, 255).getRGB());
-                Fonts.interMedium.get(12).drawString(catName, posX + 16.0f, itemY + 6.5f, Color.white.getRGB());
+                // sharp minimalist active category container with subtle border
+                RoundedUtils.drawRoundOutline(posX + 6.0f, itemY, sidebarW - 12.0f, 19.0f, 2.0f, 0.5f, new Color(28, 31, 38, 255), new Color(255, 255, 255, 25));
+                Fonts.interMedium.get(11).drawString(catName, posX + 16.0f, itemY + 4.5f, Color.white.getRGB());
             } else {
                 if (isHovered) {
-                    RoundedUtils.drawRound(posX + 6.0f, itemY, sidebarW - 12.0f, 24.0f, 3.0f, new Color(25, 27, 34, 200));
+                    RoundedUtils.drawRound(posX + 6.0f, itemY, sidebarW - 12.0f, 19.0f, 2.0f, new Color(22, 24, 30, 200));
                 }
-                Fonts.interMedium.get(12).drawString(catName, posX + 16.0f, itemY + 6.5f, new Color(160, 165, 175, 200).getRGB());
+                Fonts.interMedium.get(11).drawString(catName, posX + 16.0f, itemY + 4.5f, new Color(140, 145, 155, 220).getRGB());
             }
 
-            itemY += 27.0f;
+            itemY += 22.0f;
         }
 
-        float saveBtnY = posY + height - 48.0f;
+        // compact bottom buttons positioned to prevent collision
+        float btnH = 17.0f;
+        float cfgBtnY = posY + height - 24.0f;
+        float saveBtnY = cfgBtnY - 21.0f;
         float saveBtnW = sidebarW - 12.0f;
-        boolean saveHover = MouseUtils.isHovered(posX + 6.0f, saveBtnY, saveBtnW, 18.0f, mouseX, mouseY);
-        RoundedUtils.drawRoundOutline(posX + 6.0f, saveBtnY, saveBtnW, 18.0f, 4.0f, 1.0f, saveHover ? new Color(255, 255, 255, 30) : new Color(0, 0, 0, 0), new Color(255, 255, 255, 40));
-        Fonts.interMedium.get(9).drawString("SAVE AS PROFILE", posX + 12.0f, saveBtnY + 5.0f, new Color(180, 185, 195, 220).getRGB());
 
-        float cfgBtnY = posY + height - 26.0f;
-        boolean cfgHover = MouseUtils.isHovered(posX + 6.0f, cfgBtnY, saveBtnW, 18.0f, mouseX, mouseY);
-        RoundedUtils.drawRound(posX + 6.0f, cfgBtnY, saveBtnW, 18.0f, 4.0f, cfgHover ? new Color(70, 130, 246, 255) : new Color(59, 130, 246, 220));
-        Fonts.interMedium.get(9).drawString("CONFIG MANAGER", posX + 12.0f, cfgBtnY + 5.0f, Color.white.getRGB());
+        boolean saveHover = MouseUtils.isHovered(posX + 6.0f, saveBtnY, saveBtnW, btnH, mouseX, mouseY);
+        RoundedUtils.drawRoundOutline(posX + 6.0f, saveBtnY, saveBtnW, btnH, 2.0f, 0.5f, saveHover ? new Color(28, 31, 38, 240) : new Color(18, 20, 25, 200), new Color(255, 255, 255, 22));
+        Fonts.interMedium.get(9).drawString("SAVE AS PROFILE", posX + 12.0f, saveBtnY + 4.5f, new Color(175, 180, 190, 220).getRGB());
 
-        float contentStartX = posX + 138.0f;
-        float topPillY = posY + 46.0f;
+        boolean cfgHover = MouseUtils.isHovered(posX + 6.0f, cfgBtnY, saveBtnW, btnH, mouseX, mouseY);
+        RoundedUtils.drawRoundOutline(posX + 6.0f, cfgBtnY, saveBtnW, btnH, 2.0f, 0.5f, cfgHover ? new Color(34, 38, 48, 255) : new Color(24, 27, 34, 230), new Color(255, 255, 255, 30));
+        Fonts.interMedium.get(9).drawString("CONFIG MANAGER", posX + 12.0f, cfgBtnY + 4.5f, Color.white.getRGB());
 
-        float searchW = 110.0f;
+        // subheader row: minimalist section breadcrumb and dedicated search bar
+        String activeSection = selectedSearchCategory != null ? "SEARCH" : (selectedConfigCategory != null ? "CONFIGS" : (selectedCategory != null ? selectedCategory.getCategory().getName().toUpperCase() : "MODULES"));
+        Fonts.interBold.get(10).drawString(">", posX + 138.0f, posY + 50.0f, new Color(200, 205, 215, 200).getRGB());
+        Fonts.interMedium.get(10).drawString(activeSection + " // DIRECTORY", posX + 148.0f, posY + 50.0f, new Color(145, 150, 160, 200).getRGB());
+
+        float searchW = 120.0f;
         float searchH = 18.0f;
-        float searchX = posX + width - searchW - 10.0f;
-        RoundedUtils.drawRoundOutline(searchX, topPillY, searchW, searchH, 4.0f, 1.0f, new Color(0, 0, 0, 40), new Color(255, 255, 255, 40));
+        float searchX = posX + width - searchW - 12.0f;
+        float searchY = posY + 46.0f;
+        RoundedUtils.drawRoundOutline(searchX, searchY, searchW, searchH, 2.0f, 0.5f, new Color(16, 18, 22, 230), new Color(255, 255, 255, 25));
 
         if (selectedSearchCategory != null && searchCategoryComponent.isInputting()) {
             String cursor = (System.currentTimeMillis() % 1000 > 500 ? "|" : "");
             String query = searchCategoryComponent.getFilter();
             String display = query.isEmpty() ? "Search..." + cursor : query + cursor;
-            Fonts.interRegular.get(10).drawString(display, searchX + 6.0f, topPillY + 5.0f, Color.white.getRGB());
+            Fonts.interRegular.get(10).drawString(display, searchX + 6.0f, searchY + 4.5f, Color.white.getRGB());
         } else if (selectedSearchCategory != null && !searchCategoryComponent.getFilter().isEmpty()) {
-            Fonts.interRegular.get(10).drawString(searchCategoryComponent.getFilter(), searchX + 6.0f, topPillY + 5.0f, Color.white.getRGB());
+            Fonts.interRegular.get(10).drawString(searchCategoryComponent.getFilter(), searchX + 6.0f, searchY + 4.5f, Color.white.getRGB());
         } else {
-            Fonts.interRegular.get(10).drawString("Search...", searchX + 6.0f, topPillY + 5.0f, new Color(120, 125, 135, 180).getRGB());
+            Fonts.interRegular.get(10).drawString("Search...", searchX + 6.0f, searchY + 4.5f, new Color(120, 125, 135, 180).getRGB());
         }
+
+        // subheader bottom separator line
+        RenderUtils.drawRect(posX + 126.0f, posY + 69.0f, width - 126.0f, 1.0f, new Color(255, 255, 255, 10).getRGB());
 
         searchCategoryComponent.setSelected(selectedSearchCategory != null);
         configCategoryComponent.setSelected(selectedConfigCategory != null);
 
-        if (selectedSearchCategory != null) {
-            searchCategoryComponent.render(false);
-            searchCategoryComponent.drawScreen(mouseX, mouseY);
-        } else if (selectedConfigCategory != null) {
-            configCategoryComponent.render(false);
-            configCategoryComponent.drawScreen(mouseX, mouseY);
-        } else if (selectedCategory != null) {
-            selectedCategory.render(false);
-            selectedCategory.drawScreen(mouseX, mouseY);
-        }
-
+        // render either settings modal exclusively or content list to prevent bleed
         if (focusedModule != null) {
             drawFocusedSettingsModal(mouseX, mouseY);
+        } else {
+            if (selectedSearchCategory != null) {
+                searchCategoryComponent.render(false);
+                searchCategoryComponent.drawScreen(mouseX, mouseY);
+            } else if (selectedConfigCategory != null) {
+                configCategoryComponent.render(false);
+                configCategoryComponent.drawScreen(mouseX, mouseY);
+            } else if (selectedCategory != null) {
+                selectedCategory.render(false);
+                selectedCategory.drawScreen(mouseX, mouseY);
+            }
         }
 
         RenderUtils.scaleEnd();
     }
 
     private void drawFocusedSettingsModal(int mouseX, int mouseY) {
-        float modalX = posX + 136.0f;
-        float modalY = posY + 46.0f;
-        float modalW = width - 144.0f;
-        float modalH = height - 54.0f;
+        float modalX = posX + 134.0f;
+        float modalY = posY + 44.0f;
+        float modalW = width - 142.0f;
+        float modalH = height - 52.0f;
 
-        RoundedUtils.drawRoundOutline(modalX, modalY, modalW, modalH, 6.0f, 0.5f, new Color(14, 16, 20, 252), new Color(255, 255, 255, 15));
+        // solid opaque background so underlying elements never bleed through
+        RoundedUtils.drawRoundOutline(modalX, modalY, modalW, modalH, 2.0f, 0.5f, new Color(12, 13, 17, 255), new Color(255, 255, 255, 20));
 
         boolean backHover = MouseUtils.isHovered(modalX + 8.0f, modalY + 6.0f, 48.0f, 18.0f, mouseX, mouseY);
-        RoundedUtils.drawRound(modalX + 8.0f, modalY + 6.0f, 48.0f, 18.0f, 3.0f, backHover ? new Color(38, 44, 58, 240) : new Color(24, 27, 36, 220));
-        Fonts.interMedium.get(10).drawString("← BACK", modalX + 11.0f, modalY + 11.0f, Color.white.getRGB());
+        RoundedUtils.drawRoundOutline(modalX + 8.0f, modalY + 6.0f, 48.0f, 18.0f, 2.0f, 0.5f, backHover ? new Color(32, 36, 46, 255) : new Color(20, 23, 29, 240), new Color(255, 255, 255, 25));
+        Fonts.interMedium.get(10).drawString("← BACK", modalX + 11.0f, modalY + 10.5f, Color.white.getRGB());
 
         Fonts.interBold.get(12).drawString(focusedModule.getModule().getName() + " Settings", modalX + 64.0f, modalY + 10.0f, Color.white.getRGB());
         RenderUtils.drawRect(modalX, modalY + 28.0f, modalW, 1.0f, new Color(255, 255, 255, 12).getRGB());
@@ -365,9 +376,9 @@ public class PanelGui extends GuiScreen {
         float sidebarW = 125.0f;
         float sidebarY = posY + 41.0f;
         if (MouseUtils.isHovered(posX, sidebarY, sidebarW, height - 41.0f, mouseX, mouseY) && mouseButton == 0) {
-            float itemY = sidebarY + 8.0f;
+            float itemY = sidebarY + 6.0f;
             for (Category cat : categories) {
-                if (MouseUtils.isHovered(posX + 6.0f, itemY, sidebarW - 12.0f, 24.0f, mouseX, mouseY)) {
+                if (MouseUtils.isHovered(posX + 6.0f, itemY, sidebarW - 12.0f, 19.0f, mouseX, mouseY)) {
                     if (selectedCategory != cat) {
                         cat.initCategory();
                     }
@@ -377,17 +388,19 @@ public class PanelGui extends GuiScreen {
                     focusedModule = null;
                     return;
                 }
-                itemY += 27.0f;
+                itemY += 22.0f;
             }
 
-            float saveBtnY = posY + height - 48.0f;
-            if (MouseUtils.isHovered(posX + 6.0f, saveBtnY, sidebarW - 12.0f, 18.0f, mouseX, mouseY)) {
+            float btnH = 17.0f;
+            float cfgBtnY = posY + height - 24.0f;
+            float saveBtnY = cfgBtnY - 21.0f;
+
+            if (MouseUtils.isHovered(posX + 6.0f, saveBtnY, sidebarW - 12.0f, btnH, mouseX, mouseY)) {
                 Demise.INSTANCE.getConfigManager().saveConfigs();
                 return;
             }
 
-            float cfgBtnY = posY + height - 26.0f;
-            if (MouseUtils.isHovered(posX + 6.0f, cfgBtnY, sidebarW - 12.0f, 18.0f, mouseX, mouseY)) {
+            if (MouseUtils.isHovered(posX + 6.0f, cfgBtnY, sidebarW - 12.0f, btnH, mouseX, mouseY)) {
                 if (selectedConfigCategory == null) {
                     configCategoryComponent.initCategory();
                 }
@@ -400,11 +413,12 @@ public class PanelGui extends GuiScreen {
             return;
         }
 
-        // search capsule click
-        float searchW = 110.0f;
-        float searchX = posX + width - searchW - 10.0f;
-        float topPillY = posY + 46.0f;
-        if (MouseUtils.isHovered(searchX, topPillY, searchW, 18.0f, mouseX, mouseY) && mouseButton == 0) {
+        // search capsule click hitbox
+        float searchW = 120.0f;
+        float searchH = 18.0f;
+        float searchX = posX + width - searchW - 12.0f;
+        float searchY = posY + 46.0f;
+        if (MouseUtils.isHovered(searchX, searchY, searchW, searchH, mouseX, mouseY) && mouseButton == 0) {
             if (selectedSearchCategory == null) {
                 searchCategoryComponent.initCategory();
             }
@@ -419,9 +433,9 @@ public class PanelGui extends GuiScreen {
         }
 
         if (focusedModule != null) {
-            float modalX = posX + 138.0f;
-            float modalY = posY + 46.0f;
-            if (MouseUtils.isHovered(modalX + 8.0f, modalY + 8.0f, 50.0f, 18.0f, mouseX, mouseY) && mouseButton == 0) {
+            float modalX = posX + 134.0f;
+            float modalY = posY + 44.0f;
+            if (MouseUtils.isHovered(modalX + 8.0f, modalY + 6.0f, 48.0f, 18.0f, mouseX, mouseY) && mouseButton == 0) {
                 focusedModule = null;
                 return;
             }
