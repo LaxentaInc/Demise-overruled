@@ -644,7 +644,9 @@ public class Minecraft implements IThreadListener, IPlayerUsage {
         ScaledResolution sr = new ScaledResolution(this);
         int i = sr.getScaleFactor();
         Framebuffer framebuffer = new Framebuffer(sr.getScaledWidth() * i, sr.getScaledHeight() * i, true);
+        framebuffer.framebufferClear();
         framebuffer.bindFramebuffer(false);
+
         GlStateManager.matrixMode(5889);
         GlStateManager.loadIdentity();
         GlStateManager.ortho(0.0D, sr.getScaledWidth(), sr.getScaledHeight(), 0.0D, 1000.0D, 3000.0D);
@@ -655,17 +657,33 @@ public class Minecraft implements IThreadListener, IPlayerUsage {
         GlStateManager.disableFog();
         GlStateManager.disableDepth();
         GlStateManager.enableTexture2D();
+        GlStateManager.enableBlend();
+        GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
 
-        // render live animated wallpaper video background behind startup splash logo
-        VideoBackground.draw();
+        // render solid dark background to ensure screen is never white during early startup
+        RenderUtils.drawRect(0, 0, sr.getScaledWidth(), sr.getScaledHeight(), new Color(14, 16, 20, 255).getRGB());
         RenderUtils.drawImage(new ResourceLocation("demise/texture/splash.png"), (float) (sr.getScaledWidth() / 2 - 75), (float) (sr.getScaledHeight() / 2 - 25), 150, 50);
 
         GlStateManager.disableLighting();
         GlStateManager.disableFog();
         framebuffer.unbindFramebuffer();
         framebuffer.framebufferRender(sr.getScaledWidth() * i, sr.getScaledHeight() * i);
+
+        // restore opengl state and rebind primary minecraft framebuffer
+        GlStateManager.matrixMode(5889);
+        GlStateManager.loadIdentity();
+        GlStateManager.matrixMode(5888);
+        GlStateManager.loadIdentity();
+        GlStateManager.colorMask(true, true, true, true);
+        GlStateManager.enableDepth();
+        GlStateManager.depthMask(true);
         GlStateManager.enableAlpha();
         GlStateManager.alphaFunc(516, 0.1F);
+        framebuffer.deleteFramebuffer();
+
+        if (this.framebufferMc != null) {
+            this.framebufferMc.bindFramebuffer(true);
+        }
         this.updateDisplay();
     }
 

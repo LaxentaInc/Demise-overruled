@@ -124,14 +124,28 @@ public class Display {
         glfwWindowHint(GLFW_CONTEXT_NO_ERROR, GLFW_FALSE);
         glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
 
-        glfwWindowHint(GLFW_POSITION_X, (monitorWidth - mode.getWidth()) / 2);
-        glfwWindowHint(GLFW_POSITION_Y, (monitorHeight - mode.getHeight()) / 2);
-
         Window.handle = glfwCreateWindow(mode.getWidth(), mode.getHeight(), windowTitle, NULL, sharedWindow);
 
         if (Window.handle == 0L) {
             throw new IllegalStateException("Failed to create Display window");
         }
+
+        // query monitor screen bounds and center the decorated window on screen
+        int[] monitorX = new int[1];
+        int[] monitorY = new int[1];
+        glfwGetMonitorPos(monitor, monitorX, monitorY);
+        int targetPosX = monitorX[0] + Math.max(0, (monitorWidth - mode.getWidth()) / 2);
+        int targetPosY = monitorY[0] + Math.max(0, (monitorHeight - mode.getHeight()) / 2);
+        glfwSetWindowPos(Window.handle, targetPosX, targetPosY);
+        glfwSetWindowAttrib(Window.handle, GLFW_DECORATED, GLFW_TRUE);
+        glfwShowWindow(Window.handle);
+
+        displayX = targetPosX;
+        displayY = targetPosY;
+        savedX[0] = targetPosX;
+        savedY[0] = targetPosY;
+        savedW[0] = mode.getWidth();
+        savedH[0] = mode.getHeight();
 
         Window.keyCallback = new GLFWKeyCallback() {
 
@@ -328,7 +342,15 @@ public class Display {
     }
 
     public static void setLocation(int new_x, int new_y) {
-        System.out.println("TODO: Implement Display.setLocation(int, int)");
+        displayX = new_x;
+        displayY = new_y;
+        if (Window.handle != 0L) {
+            glfwSetWindowPos(Window.handle, new_x, new_y);
+            if (!isFullscreenMode) {
+                savedX[0] = new_x;
+                savedY[0] = new_y;
+            }
+        }
     }
 
     public static void setVSyncEnabled(boolean sync) {

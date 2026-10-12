@@ -436,6 +436,54 @@ public class PanelGui extends GuiScreen {
             return;
         }
 
+        // if the module settings modal is open, it has absolute priority over covered components
+        if (focusedModule != null) {
+            float modalX = posX + 134.0f;
+            float modalY = posY + 44.0f;
+            float modalW = width - 142.0f;
+            float modalH = height - 52.0f;
+
+            if (MouseUtils.isHovered(modalX, modalY, modalW, modalH, mouseX, mouseY)) {
+                // back button to return to module grid
+                if (MouseUtils.isHovered(modalX + 8.0f, modalY + 6.0f, 48.0f, 18.0f, mouseX, mouseY) && mouseButton == 0) {
+                    focusedModule = null;
+                    bindingListening = false;
+                    return;
+                }
+
+                // bind button in the top-right of the modal header
+                int bindKey = focusedModule.getModule().getKeyBind();
+                String keyName = bindKey == 0 ? "NONE" : Keyboard.getKeyName(bindKey);
+                if (keyName == null) keyName = "NONE";
+                String bindText = bindingListening ? "BIND: ..." : "BIND: " + keyName;
+                float bindBtnW = Math.max(68.0f, Fonts.interMedium.get(10).getStringWidth(bindText) + 16.0f);
+                float bindBtnX = modalX + modalW - bindBtnW - 10.0f;
+                float bindBtnY = modalY + 6.0f;
+                float bindBtnH = 18.0f;
+
+                if (MouseUtils.isHovered(bindBtnX, bindBtnY, bindBtnW, bindBtnH, mouseX, mouseY) && mouseButton == 0) {
+                    bindingListening = !bindingListening;
+                    return;
+                }
+
+                // clicking anywhere else inside modal cancels key listening mode
+                if (bindingListening) {
+                    bindingListening = false;
+                }
+
+                for (Component comp : focusedModule.getSettings()) {
+                    if (comp.isVisible()) {
+                        comp.mouseClicked(mouseX, mouseY, mouseButton);
+                    }
+                }
+                return;
+            } else {
+                // clicked outside modal boundary, dismiss modal
+                focusedModule = null;
+                bindingListening = false;
+            }
+        }
+
         if (mouseButton == 0 && MouseUtils.isHovered(posX, posY, width, 40.0f, mouseX, mouseY)) {
             float navCenterX = posX + (width / 2.0f) - 95.0f;
             float navY = posY + 9.0f;
@@ -527,44 +575,6 @@ public class PanelGui extends GuiScreen {
             return;
         } else if (selectedSearchCategory != null) {
             searchCategoryComponent.setInputting(false);
-        }
-
-        if (focusedModule != null) {
-            float modalX = posX + 134.0f;
-            float modalY = posY + 44.0f;
-            if (MouseUtils.isHovered(modalX + 8.0f, modalY + 6.0f, 48.0f, 18.0f, mouseX, mouseY) && mouseButton == 0) {
-                focusedModule = null;
-                bindingListening = false;
-                return;
-            }
-
-            // detect clicks on the bind capsule button
-            float modalW = width - 142.0f;
-            int bindKey = focusedModule.getModule().getKeyBind();
-            String keyName = bindKey == 0 ? "NONE" : Keyboard.getKeyName(bindKey);
-            if (keyName == null) keyName = "NONE";
-            String bindText = bindingListening ? "BIND: ..." : "BIND: " + keyName;
-            float bindBtnW = Math.max(68.0f, Fonts.interMedium.get(10).getStringWidth(bindText) + 16.0f);
-            float bindBtnX = modalX + modalW - bindBtnW - 10.0f;
-            float bindBtnY = modalY + 6.0f;
-            float bindBtnH = 18.0f;
-
-            if (MouseUtils.isHovered(bindBtnX, bindBtnY, bindBtnW, bindBtnH, mouseX, mouseY) && mouseButton == 0) {
-                bindingListening = !bindingListening;
-                return;
-            }
-
-            // clicking outside the bind button cancels listening mode
-            if (bindingListening) {
-                bindingListening = false;
-            }
-
-            for (Component comp : focusedModule.getSettings()) {
-                if (comp.isVisible()) {
-                    comp.mouseClicked(mouseX, mouseY, mouseButton);
-                }
-            }
-            return;
         }
 
         if (selectedSearchCategory != null) {
