@@ -94,7 +94,7 @@ public class GuiMainMenu extends GuiScreen {
         Fonts.urbanist.get(38).drawString(funny ? "dimaise" : Demise.INSTANCE.getClientName(), interpolatedX, interpolatedY, new Color(255, 255, 255, 208).getRGB());
 
         if (fade) {
-            RenderUtils.drawRect(0, 0, mc.displayWidth, mc.displayHeight, new Color(0, 0, 0, alpha).getRGB());
+            RenderUtils.drawRect(0, 0, width, height, new Color(0, 0, 0, Math.max(0, Math.min(255, alpha))).getRGB());
 
             alpha -= 2;
 

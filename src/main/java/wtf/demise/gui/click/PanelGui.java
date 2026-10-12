@@ -7,9 +7,6 @@ import org.lwjgl.opengl.GL11;
 import org.lwjglx.input.Keyboard;
 import org.lwjglx.input.Mouse;
 import wtf.demise.Demise;
-import wtf.demise.events.annotations.EventPriority;
-import wtf.demise.events.annotations.EventTarget;
-import wtf.demise.events.impl.render.ShaderEvent;
 import wtf.demise.features.modules.ModuleCategory;
 import wtf.demise.gui.click.Component;
 import wtf.demise.gui.click.components.Category;
@@ -30,6 +27,7 @@ import java.util.List;
 public class PanelGui extends GuiScreen {
     private final List<Category> categories = new ArrayList<>();
     public static Category selectedCategory;
+    public static Category previousCategory;
     public static ConfigCategoryComponent selectedConfigCategory;
     public static SearchCategory selectedSearchCategory;
     public static ModuleComponent focusedModule = null;
@@ -49,9 +47,6 @@ public class PanelGui extends GuiScreen {
     private float maxSettingsScroll = 0.0f;
 
     public PanelGui() {
-        Demise.INSTANCE.getEventManager().unregister(this);
-        Demise.INSTANCE.getEventManager().register(this);
-
         for (ModuleCategory category : ModuleCategory.values()) {
             categories.add(new Category(category, 0, 0));
         }
@@ -229,21 +224,40 @@ public class PanelGui extends GuiScreen {
         Fonts.interBold.get(10).drawString(">", posX + 138.0f, posY + 50.0f, new Color(200, 205, 215, 200).getRGB());
         Fonts.interMedium.get(10).drawString(activeSection + " // DIRECTORY", posX + 148.0f, posY + 50.0f, new Color(145, 150, 160, 200).getRGB());
 
-        float searchW = 120.0f;
-        float searchH = 18.0f;
+        float searchW = 135.0f;
+        float searchH = 19.0f;
         float searchX = posX + width - searchW - 12.0f;
         float searchY = posY + 46.0f;
-        RoundedUtils.drawRoundOutline(searchX, searchY, searchW, searchH, 2.0f, 0.5f, new Color(16, 18, 22, 230), new Color(255, 255, 255, 25));
+        boolean searchHovered = MouseUtils.isHovered(searchX, searchY, searchW, searchH, mouseX, mouseY);
+        RoundedUtils.drawRoundOutline(searchX, searchY, searchW, searchH, 2.0f, 0.5f, new Color(16, 18, 22, 230), searchHovered ? new Color(255, 255, 255, 45) : new Color(255, 255, 255, 22));
 
-        if (selectedSearchCategory != null && searchCategoryComponent.isInputting()) {
+        boolean isSearchActive = (selectedSearchCategory != null);
+        String filter = searchCategoryComponent.getFilter();
+        boolean hasFilter = !filter.isEmpty();
+
+        // draw magnifying search icon
+        Fonts.interMedium.get(10).drawString("⌕", searchX + 5.0f, searchY + 4.5f, new Color(140, 145, 160).getRGB());
+
+        if (isSearchActive && searchCategoryComponent.isInputting()) {
             String cursor = (System.currentTimeMillis() % 1000 > 500 ? "|" : "");
-            String query = searchCategoryComponent.getFilter();
-            String display = query.isEmpty() ? "Search..." + cursor : query + cursor;
-            Fonts.interRegular.get(10).drawString(display, searchX + 6.0f, searchY + 4.5f, Color.white.getRGB());
-        } else if (selectedSearchCategory != null && !searchCategoryComponent.getFilter().isEmpty()) {
-            Fonts.interRegular.get(10).drawString(searchCategoryComponent.getFilter(), searchX + 6.0f, searchY + 4.5f, Color.white.getRGB());
+            String display = hasFilter ? filter + cursor : cursor;
+            if (!hasFilter && cursor.isEmpty()) {
+                Fonts.interRegular.get(10).drawString("Search modules...", searchX + 17.0f, searchY + 4.5f, new Color(110, 115, 125, 180).getRGB());
+            } else {
+                Fonts.interRegular.get(10).drawString(display, searchX + 17.0f, searchY + 4.5f, Color.white.getRGB());
+            }
+        } else if (hasFilter) {
+            Fonts.interRegular.get(10).drawString(filter, searchX + 17.0f, searchY + 4.5f, Color.white.getRGB());
         } else {
-            Fonts.interRegular.get(10).drawString("Search...", searchX + 6.0f, searchY + 4.5f, new Color(120, 125, 135, 180).getRGB());
+            Fonts.interRegular.get(10).drawString("Search modules...", searchX + 17.0f, searchY + 4.5f, new Color(110, 115, 125, 180).getRGB());
+        }
+
+        // draw interactive clear button when a query is present
+        if (hasFilter) {
+            float clearBtnX = searchX + searchW - 14.0f;
+            float clearBtnY = searchY + 4.5f;
+            boolean clearHovered = MouseUtils.isHovered(clearBtnX - 3.0f, searchY, 17.0f, searchH, mouseX, mouseY);
+            Fonts.interMedium.get(10).drawString("✕", clearBtnX, clearBtnY, clearHovered ? Color.white.getRGB() : new Color(150, 155, 170).getRGB());
         }
 
         // subheader bottom separator line
@@ -412,20 +426,6 @@ public class PanelGui extends GuiScreen {
         GL11.glDisable(GL11.GL_SCISSOR_TEST);
     }
 
-    @EventPriority(100)
-    @EventTarget
-    public void onShader2D(ShaderEvent e) {
-        if (mc.currentScreen != this) return;
-
-        ScaledResolution sr = new ScaledResolution(mc);
-        RenderUtils.scaleStart(sr.getScaledWidth() / 2.0f, sr.getScaledHeight() / 2.0f, interpolatedScale);
-        if (e.getShaderType() != ShaderEvent.ShaderType.GLOW) {
-            RoundedUtils.drawShaderRound(posX, posY, width, height, 10.0f, Color.black);
-        } else {
-            RoundedUtils.drawGradientPreset(posX, posY, width, height, 10.0f);
-        }
-        RenderUtils.scaleEnd();
-    }
 
     @Override
     public void mouseClicked(int mouseX, int mouseY, int mouseButton) {
@@ -559,12 +559,19 @@ public class PanelGui extends GuiScreen {
         }
 
         // search capsule click hitbox
-        float searchW = 120.0f;
-        float searchH = 18.0f;
+        float searchW = 135.0f;
+        float searchH = 19.0f;
         float searchX = posX + width - searchW - 12.0f;
         float searchY = posY + 46.0f;
         if (MouseUtils.isHovered(searchX, searchY, searchW, searchH, mouseX, mouseY) && mouseButton == 0) {
+            float clearBtnX = searchX + searchW - 14.0f;
+            if (!searchCategoryComponent.getFilter().isEmpty() && MouseUtils.isHovered(clearBtnX - 4.0f, searchY, 18.0f, searchH, mouseX, mouseY)) {
+                searchCategoryComponent.clearFilter();
+                return;
+            }
+
             if (selectedSearchCategory == null) {
+                previousCategory = selectedCategory;
                 searchCategoryComponent.initCategory();
             }
             selectedSearchCategory = searchCategoryComponent;
@@ -573,11 +580,11 @@ public class PanelGui extends GuiScreen {
             focusedModule = null;
             searchCategoryComponent.setInputting(true);
             return;
-        } else if (selectedSearchCategory != null) {
-            searchCategoryComponent.setInputting(false);
         }
 
         if (selectedSearchCategory != null) {
+            // keep inputting active in search view so clicking to toggle a module does not disable typing
+            searchCategoryComponent.setInputting(true);
             selectedSearchCategory.mouseClicked(mouseX, mouseY, mouseButton);
             return;
         }
@@ -646,14 +653,29 @@ public class PanelGui extends GuiScreen {
                 bindingListening = false;
                 return;
             }
+            if (selectedSearchCategory != null) {
+                if (!searchCategoryComponent.getFilter().isEmpty()) {
+                    searchCategoryComponent.clearFilter();
+                    return;
+                } else {
+                    // return to previous category instead of abruptly closing gui
+                    selectedSearchCategory = null;
+                    searchCategoryComponent.setInputting(false);
+                    selectedCategory = (previousCategory != null ? previousCategory : categories.get(0));
+                    return;
+                }
+            }
             closing = true;
+            return;
         }
 
         if (keyCode == Keyboard.KEY_TAB) {
             selectedCategory = categories.get((categories.indexOf(selectedCategory) + 1) % categories.size());
             selectedConfigCategory = null;
             selectedSearchCategory = null;
+            searchCategoryComponent.setInputting(false);
             focusedModule = null;
+            return;
         }
 
         if (closing) {
@@ -671,6 +693,16 @@ public class PanelGui extends GuiScreen {
 
         if (selectedSearchCategory != null) {
             selectedSearchCategory.keyTyped(typedChar, keyCode);
+            return;
+        }
+
+        // if typing in category view, jump directly into search for instant access
+        if (selectedCategory != null && (Character.isLetterOrDigit(typedChar) || typedChar == ' ' || typedChar == '-' || typedChar == '_')) {
+            previousCategory = selectedCategory;
+            selectedSearchCategory = searchCategoryComponent;
+            selectedCategory = null;
+            searchCategoryComponent.setInputting(true);
+            searchCategoryComponent.keyTyped(typedChar, keyCode);
             return;
         }
         if (selectedConfigCategory != null) {

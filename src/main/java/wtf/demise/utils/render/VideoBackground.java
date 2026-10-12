@@ -55,6 +55,13 @@ public class VideoBackground implements InstanceAccess {
             offsetX = (screenWidth - renderWidth) / 2.0f;
         }
 
+        // draw solid dark backdrop so missing textures or frame drops never flash white
+        RenderUtils.drawRect(0, 0, screenWidth, screenHeight, new java.awt.Color(14, 16, 20, 255).getRGB());
+
+        if (mc.getTextureManager() == null || currentFrame == null) {
+            return;
+        }
+
         // setup opengl state for full screen texture blitting
         GlStateManager.enableTexture2D();
         GlStateManager.disableLighting();
@@ -64,16 +71,20 @@ public class VideoBackground implements InstanceAccess {
         GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
         GlStateManager.color(1.0f, 1.0f, 1.0f, 1.0f);
 
-        mc.getTextureManager().bindTexture(currentFrame);
+        try {
+            mc.getTextureManager().bindTexture(currentFrame);
 
-        Tessellator tessellator = Tessellator.getInstance();
-        WorldRenderer worldrenderer = tessellator.getWorldRenderer();
-        worldrenderer.begin(7, DefaultVertexFormats.POSITION_TEX);
-        worldrenderer.pos(offsetX, offsetY + renderHeight, 0.0).tex(0.0, 1.0).endVertex();
-        worldrenderer.pos(offsetX + renderWidth, offsetY + renderHeight, 0.0).tex(1.0, 1.0).endVertex();
-        worldrenderer.pos(offsetX + renderWidth, offsetY, 0.0).tex(1.0, 0.0).endVertex();
-        worldrenderer.pos(offsetX, offsetY, 0.0).tex(0.0, 0.0).endVertex();
-        tessellator.draw();
+            Tessellator tessellator = Tessellator.getInstance();
+            WorldRenderer worldrenderer = tessellator.getWorldRenderer();
+            worldrenderer.begin(7, DefaultVertexFormats.POSITION_TEX);
+            worldrenderer.pos(offsetX, offsetY + renderHeight, 0.0).tex(0.0, 1.0).endVertex();
+            worldrenderer.pos(offsetX + renderWidth, offsetY + renderHeight, 0.0).tex(1.0, 1.0).endVertex();
+            worldrenderer.pos(offsetX + renderWidth, offsetY, 0.0).tex(1.0, 0.0).endVertex();
+            worldrenderer.pos(offsetX, offsetY, 0.0).tex(0.0, 0.0).endVertex();
+            tessellator.draw();
+        } catch (Exception ignored) {
+            // safely keep dark background if texture binding fails during reload
+        }
 
         GlStateManager.disableBlend();
     }

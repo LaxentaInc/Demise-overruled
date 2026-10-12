@@ -2,6 +2,7 @@ package wtf.demise.gui.click.components;
 
 import lombok.Getter;
 import lombok.Setter;
+import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.util.MathHelper;
 import org.lwjgl.opengl.GL11;
 import org.lwjglx.input.Keyboard;
@@ -13,16 +14,11 @@ import wtf.demise.gui.click.IComponent;
 import wtf.demise.gui.click.PanelGui;
 import wtf.demise.gui.font.Fonts;
 import wtf.demise.utils.math.MathUtils;
-import wtf.demise.utils.misc.SoundUtil;
-import wtf.demise.utils.render.MouseUtils;
 import wtf.demise.utils.render.RenderUtils;
 
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
-
-import static wtf.demise.gui.click.PanelGui.posX;
-import static wtf.demise.gui.click.PanelGui.posY;
 
 @Getter
 @Setter
@@ -31,7 +27,8 @@ public class SearchCategory implements IComponent {
     private boolean isSelected;
     private float interpolatedX;
     private float interpolatedLineWidth;
-    private final List<ModuleComponent> moduleComponents = new ArrayList<>();
+    private final List<ModuleComponent> allModules = new ArrayList<>();
+    private final List<ModuleComponent> filteredModules = new ArrayList<>();
     private float scrollOffset = 0;
     private float targetScrollOffset = 0;
     private float maxScroll = 0;
@@ -42,15 +39,45 @@ public class SearchCategory implements IComponent {
         this.isSelected = false;
     }
 
+    public List<ModuleComponent> getModuleComponents() {
+        return filteredModules;
+    }
+
     public void initCategory() {
-        moduleComponents.clear();
-        for (Module module : Demise.INSTANCE.getModuleManager().getModules()) {
-            if (filter.isEmpty() || module.getName().toLowerCase().contains(filter.toLowerCase())) {
-                moduleComponents.add(new ModuleComponent(module));
+        // initialize cached module component list once to avoid allocating new components on every keystroke
+        if (allModules.isEmpty()) {
+            for (Module module : Demise.INSTANCE.getModuleManager().getModules()) {
+                allModules.add(new ModuleComponent(module));
+            }
+        }
+        allModules.forEach(ModuleComponent::initCategory);
+        filterModules();
+    }
+
+    public void clearFilter() {
+        this.filter = "";
+        filterModules();
+    }
+
+    public void filterModules() {
+        filteredModules.clear();
+        String query = filter.trim().toLowerCase();
+
+        for (ModuleComponent comp : allModules) {
+            if (query.isEmpty()) {
+                filteredModules.add(comp);
+            } else {
+                String name = comp.getModule().getName().toLowerCase();
+                String desc = comp.getModule().getDescription() != null ? comp.getModule().getDescription().toLowerCase() : "";
+                if (name.contains(query) || desc.contains(query)) {
+                    filteredModules.add(comp);
+                }
             }
         }
 
-        moduleComponents.forEach(ModuleComponent::initCategory);
+        // reset scroll offset so matching modules are immediately visible and not scrolled out of bounds
+        targetScrollOffset = 0.0f;
+        scrollOffset = 0.0f;
     }
 
     public void render(boolean shader) {
@@ -58,7 +85,6 @@ public class SearchCategory implements IComponent {
             handleScroll();
 
             float startX = PanelGui.posX + 136.0f;
-            // start search results below the dedicated search subheader row
             float componentStartY = PanelGui.posY + 74.0f;
             float contentWidth = Math.max(130.0f, PanelGui.width - 144.0f);
             float viewHeight = Math.max(80.0f, PanelGui.height - 82.0f);
@@ -69,23 +95,30 @@ public class SearchCategory implements IComponent {
             float cardWidth = (contentWidth - (cols - 1) * colGap) / cols;
             float cardHeight = 26.0f;
 
-            int totalRows = (moduleComponents.size() + cols - 1) / cols;
+            int totalRows = (filteredModules.size() + cols - 1) / cols;
             float totalHeight = totalRows * cardHeight + Math.max(0, totalRows - 1) * rowGap;
 
             maxScroll = Math.max(0, totalHeight - viewHeight);
+            targetScrollOffset = MathHelper.clamp_float(targetScrollOffset, 0.0f, maxScroll);
             scrollOffset = MathUtils.interpolate(scrollOffset, targetScrollOffset, 0.25f);
+
+            if (filteredModules.isEmpty()) {
+                String emptyMsg = filter.isEmpty() ? "No modules available." : "No modules found matching \"" + filter + "\"";
+                Fonts.interRegular.get(10).drawString(emptyMsg, startX + 6.0f, componentStartY + 14.0f, new Color(130, 135, 145, 200).getRGB());
+                return;
+            }
 
             RenderUtils.scissor(startX - 2.0f, componentStartY, contentWidth + 4.0f, viewHeight, PanelGui.interpolatedScale);
             GL11.glEnable(GL11.GL_SCISSOR_TEST);
 
             float componentOffsetY = componentStartY + 2.0f;
-            for (int i = 0; i < moduleComponents.size(); i++) {
+            for (int i = 0; i < filteredModules.size(); i++) {
                 int col = i % cols;
                 int row = i / cols;
                 float cardX = startX + col * (cardWidth + colGap);
                 float cardY = componentOffsetY + row * (cardHeight + rowGap) - scrollOffset;
 
-                ModuleComponent module = moduleComponents.get(i);
+                ModuleComponent module = filteredModules.get(i);
                 module.setX(cardX);
                 module.setY(cardY);
                 module.setWidth(cardWidth);
@@ -98,20 +131,14 @@ public class SearchCategory implements IComponent {
         }
     }
 
-    private void drawText(String text) {
-        float watermarkWidth = Fonts.urbanist.get(35).getStringWidth(Demise.INSTANCE.getClientName()) + 2 + Fonts.urbanist.get(24).getStringWidth(Demise.INSTANCE.getVersion());
-        int color = inputting ? new Color(193, 193, 193).getRGB() : new Color(119, 119, 119, 255).getRGB();
-        Fonts.interRegular.get(18).drawString(text, posX + watermarkWidth + 18, posY + 7 + Fonts.interRegular.get(15).getHeight() - 2, color);
-    }
-
     @Override
     public void drawScreen(int mouseX, int mouseY) {
-        moduleComponents.forEach(moduleComponent -> moduleComponent.drawScreen(mouseX, mouseY));
+        filteredModules.forEach(moduleComponent -> moduleComponent.drawScreen(mouseX, mouseY));
     }
 
     @Override
     public void mouseClicked(int mouseX, int mouseY, int mouseButton) {
-        moduleComponents.forEach(moduleComponent -> moduleComponent.mouseClicked(mouseX, mouseY, mouseButton));
+        filteredModules.forEach(moduleComponent -> moduleComponent.mouseClicked(mouseX, mouseY, mouseButton));
     }
 
     @Override
@@ -121,19 +148,33 @@ public class SearchCategory implements IComponent {
 
             if (keyCode == Keyboard.KEY_BACK) {
                 deleteLastCharacter();
-            }
-
-            if (Character.isLetterOrDigit(typedChar) || keyCode == Keyboard.KEY_SPACE) {
+            } else if (keyCode == Keyboard.KEY_DELETE) {
+                clearFilter();
+                return;
+            } else if (GuiScreen.isCtrlKeyDown()) {
+                if (keyCode == Keyboard.KEY_V) {
+                    String clipboard = GuiScreen.getClipboardString();
+                    if (clipboard != null && !clipboard.isEmpty()) {
+                        for (char c : clipboard.toCharArray()) {
+                            if (c >= 32 && c != 127) {
+                                filter += c;
+                            }
+                        }
+                    }
+                } else if (keyCode == Keyboard.KEY_A) {
+                    clearFilter();
+                    return;
+                }
+            } else if (typedChar >= 32 && typedChar != 127) {
                 filter += typedChar;
             }
 
             if (!lastFilter.equals(filter)) {
-                SoundUtil.playSound("demise.tick");
-                initCategory();
+                filterModules();
             }
         }
 
-        moduleComponents.forEach(moduleComponent -> moduleComponent.keyTyped(typedChar, keyCode));
+        filteredModules.forEach(moduleComponent -> moduleComponent.keyTyped(typedChar, keyCode));
     }
 
     private void deleteLastCharacter() {
@@ -144,14 +185,14 @@ public class SearchCategory implements IComponent {
 
     @Override
     public void mouseReleased(int mouseX, int mouseY, int state) {
-        moduleComponents.forEach(moduleComponent -> moduleComponent.mouseReleased(mouseX, mouseY, state));
+        filteredModules.forEach(moduleComponent -> moduleComponent.mouseReleased(mouseX, mouseY, state));
     }
 
     public void handleScroll() {
         int wheel = Mouse.getDWheel();
         if (wheel != 0) {
-            float scrollAmount = wheel > 0 ? -25 : 25;
-            targetScrollOffset = MathHelper.clamp_float(targetScrollOffset + scrollAmount, 0, maxScroll);
+            float scrollAmount = wheel > 0 ? -25.0f : 25.0f;
+            targetScrollOffset = MathHelper.clamp_float(targetScrollOffset + scrollAmount, 0.0f, maxScroll);
         }
     }
 }

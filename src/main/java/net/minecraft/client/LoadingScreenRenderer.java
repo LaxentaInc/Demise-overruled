@@ -131,18 +131,8 @@ public class LoadingScreenRenderer implements IProgressUpdate {
                     if (customloadingscreen != null) {
                         customloadingscreen.drawBackground(scaledresolution.getScaledWidth(), scaledresolution.getScaledHeight());
                     } else {
-                        /*
-                        this.mc.getTextureManager().bindTexture(Gui.optionsBackground);
-                        float f = 32.0F;
-                        worldrenderer.begin(7, DefaultVertexFormats.POSITION_TEX_COLOR);
-                        worldrenderer.pos(0.0D, l, 0.0D).tex(0.0D, (float) l / f).color(64, 64, 64, 255).endVertex();
-                        worldrenderer.pos(k, l, 0.0D).tex((float) k / f, (float) l / f).color(64, 64, 64, 255).endVertex();
-                        worldrenderer.pos(k, 0.0D, 0.0D).tex((float) k / f, 0.0D).color(64, 64, 64, 255).endVertex();
-                        worldrenderer.pos(0.0D, 0.0D, 0.0D).tex(0.0D, 0.0D).color(64, 64, 64, 255).endVertex();
-                        tessellator.draw();
-
-                         */
-                        MainMenu.draw(Demise.INSTANCE.getStartTimeLong());
+                        // draw solid background to prevent video frame texture cache stalls and white screens
+                        wtf.demise.utils.render.RenderUtils.drawRect(0, 0, k, l, new java.awt.Color(14, 16, 20, 255).getRGB());
                     }
 
                     if (progress >= 0) {
@@ -152,14 +142,14 @@ public class LoadingScreenRenderer implements IProgressUpdate {
                         int k1 = l / 2 + 16;
                         GlStateManager.disableTexture2D();
                         worldrenderer.begin(7, DefaultVertexFormats.POSITION_COLOR);
-                        worldrenderer.pos(j1, k1, 0.0D).color(128, 128, 128, 255).endVertex();
-                        worldrenderer.pos(j1, k1 + i1, 0.0D).color(128, 128, 128, 255).endVertex();
-                        worldrenderer.pos(j1 + l1, k1 + i1, 0.0D).color(128, 128, 128, 255).endVertex();
-                        worldrenderer.pos(j1 + l1, k1, 0.0D).color(128, 128, 128, 255).endVertex();
-                        worldrenderer.pos(j1, k1, 0.0D).color(128, 255, 128, 255).endVertex();
-                        worldrenderer.pos(j1, k1 + i1, 0.0D).color(128, 255, 128, 255).endVertex();
-                        worldrenderer.pos(j1 + progress, k1 + i1, 0.0D).color(128, 255, 128, 255).endVertex();
-                        worldrenderer.pos(j1 + progress, k1, 0.0D).color(128, 255, 128, 255).endVertex();
+                        worldrenderer.pos(j1, k1, 0.0D).color(30, 34, 42, 255).endVertex();
+                        worldrenderer.pos(j1, k1 + i1, 0.0D).color(30, 34, 42, 255).endVertex();
+                        worldrenderer.pos(j1 + l1, k1 + i1, 0.0D).color(30, 34, 42, 255).endVertex();
+                        worldrenderer.pos(j1 + l1, k1, 0.0D).color(30, 34, 42, 255).endVertex();
+                        worldrenderer.pos(j1, k1, 0.0D).color(220, 225, 235, 255).endVertex();
+                        worldrenderer.pos(j1, k1 + i1, 0.0D).color(220, 225, 235, 255).endVertex();
+                        worldrenderer.pos(j1 + progress, k1 + i1, 0.0D).color(220, 225, 235, 255).endVertex();
+                        worldrenderer.pos(j1 + progress, k1, 0.0D).color(220, 225, 235, 255).endVertex();
                         tessellator.draw();
                         GlStateManager.enableTexture2D();
                     }
@@ -178,6 +168,11 @@ public class LoadingScreenRenderer implements IProgressUpdate {
 
                 this.mc.updateDisplay();
 
+                // rebind primary game framebuffer so subsequent pipeline steps render cleanly
+                if (this.mc.getFramebuffer() != null) {
+                    this.mc.getFramebuffer().bindFramebuffer(true);
+                }
+
                 try {
                     Thread.yield();
                 } catch (Exception ignored) {
@@ -187,5 +182,8 @@ public class LoadingScreenRenderer implements IProgressUpdate {
     }
 
     public void setDoneWorking() {
+        if (this.mc.getFramebuffer() != null) {
+            this.mc.getFramebuffer().bindFramebuffer(true);
+        }
     }
 }
