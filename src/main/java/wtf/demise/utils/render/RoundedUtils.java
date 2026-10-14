@@ -50,6 +50,8 @@ public class RoundedUtils implements InstanceAccess {
     public static void drawGradientRound(float x, float y, float width, float height, float radius, Color bottomLeft, Color topLeft, Color bottomRight, Color topRight) {
         if (width <= 0 || height <= 0) return;
 
+        // disable face culling so opengl never discards clockwise 2d surface geometry
+        GlStateManager.disableCull();
         GlStateManager.enableBlend();
         GlStateManager.disableTexture2D();
         GlStateManager.tryBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, 1, 0);
@@ -97,6 +99,7 @@ public class RoundedUtils implements InstanceAccess {
         glShadeModel(GL_FLAT);
         GlStateManager.enableTexture2D();
         GlStateManager.disableBlend();
+        GlStateManager.enableCull();
         RenderUtils.resetColor();
     }
 
@@ -110,10 +113,13 @@ public class RoundedUtils implements InstanceAccess {
             return;
         }
 
+        // disable culling to guarantee opengl polygon is not culled by minecraft face state
+        GlStateManager.disableCull();
         GlStateManager.enableBlend();
         GlStateManager.disableTexture2D();
         GlStateManager.tryBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, 1, 0);
         GL11.glEnable(GL11.GL_LINE_SMOOTH);
+        GlStateManager.color(color.getRed() / 255.0f, color.getGreen() / 255.0f, color.getBlue() / 255.0f, color.getAlpha() / 255.0f);
         RenderUtils.color(color.getRed() / 255.0, color.getGreen() / 255.0, color.getBlue() / 255.0, color.getAlpha() / 255.0);
 
         // native opengl polygon drawing for rounded rectangle geometry
@@ -139,6 +145,7 @@ public class RoundedUtils implements InstanceAccess {
         GL11.glDisable(GL11.GL_LINE_SMOOTH);
         GlStateManager.enableTexture2D();
         GlStateManager.disableBlend();
+        GlStateManager.enableCull();
         RenderUtils.resetColor();
     }
 
@@ -155,11 +162,13 @@ public class RoundedUtils implements InstanceAccess {
         if (outlineThickness <= 0 || outlineColor == null || outlineColor.getAlpha() <= 0) return;
         radius = Math.max(0, Math.min(radius, Math.min(width / 2.0f, height / 2.0f)));
 
+        GlStateManager.disableCull();
         GlStateManager.enableBlend();
         GlStateManager.disableTexture2D();
         GlStateManager.tryBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, 1, 0);
         GL11.glEnable(GL11.GL_LINE_SMOOTH);
         GL11.glLineWidth(Math.max(1.0f, outlineThickness));
+        GlStateManager.color(outlineColor.getRed() / 255.0f, outlineColor.getGreen() / 255.0f, outlineColor.getBlue() / 255.0f, outlineColor.getAlpha() / 255.0f);
         RenderUtils.color(outlineColor.getRed() / 255.0, outlineColor.getGreen() / 255.0, outlineColor.getBlue() / 255.0, outlineColor.getAlpha() / 255.0);
 
         if (radius <= 0.5f) {
@@ -194,6 +203,7 @@ public class RoundedUtils implements InstanceAccess {
         GL11.glDisable(GL11.GL_LINE_SMOOTH);
         GlStateManager.enableTexture2D();
         GlStateManager.disableBlend();
+        GlStateManager.enableCull();
         RenderUtils.resetColor();
     }
 }

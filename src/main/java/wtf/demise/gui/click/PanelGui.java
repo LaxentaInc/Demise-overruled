@@ -128,17 +128,28 @@ public class PanelGui extends GuiScreen {
             posY = MathHelper.clamp_float(posY, 10.0f, Math.max(10.0f, screenH - height - 10.0f));
         }
 
+        // soft ambient backdrop dimming the minecraft world when gui is active
+        RenderUtils.drawRect(0, 0, screenW, screenH, new Color(6, 8, 12, 140).getRGB());
+
         RenderUtils.scaleStart(sr.getScaledWidth() / 2.0f, sr.getScaledHeight() / 2.0f, interpolatedScale);
 
-        Color mainBg = new Color(14, 16, 20, 245);
-        RoundedUtils.drawRoundOutline(posX, posY, width, height, 6.0f, 0.5f, mainBg, new Color(255, 255, 255, 15));
+        // sleek dark main window with outer shadow and rounded geometry
+        Color mainBg = new Color(13, 15, 20, 252);
+        RoundedUtils.drawRound(posX - 1.0f, posY - 1.0f, width + 2.0f, height + 2.0f, 9.0f, new Color(0, 0, 0, 90));
+        RoundedUtils.drawRoundOutline(posX, posY, width, height, 8.0f, 0.75f, mainBg, new Color(255, 255, 255, 28));
+
+        // animated glint accent line running along the upper border
+        float glintW = Math.min(200.0f, width * 0.45f);
+        float glintProgress = (System.currentTimeMillis() % 4500L) / 4500.0f;
+        float glintX = posX + 16.0f + (width - 32.0f - glintW) * (float) (0.5 + 0.5 * Math.sin(glintProgress * Math.PI * 2.0));
+        RoundedUtils.drawGradientHorizontal(glintX, posY, glintW, 1.5f, 0.75f, new Color(60, 130, 255, 0), new Color(130, 190, 255, 180));
 
         // horizontal line separator for header
         RenderUtils.drawRect(posX + 1.0f, posY + 40.0f, width - 2.0f, 1.0f, new Color(255, 255, 255, 12).getRGB());
 
-        // header title typography
-        Fonts.interBold.get(16).drawString("DEMISE", posX + 16.0f, posY + 16.0f, Color.white.getRGB());
-        Fonts.interRegular.get(16).drawString("CLIENT", posX + 18.0f + Fonts.interBold.get(16).getStringWidth("DEMISE"), posY + 16.0f, new Color(160, 165, 180, 200).getRGB());
+        // header title typography using modern outfit typography
+        Fonts.outfitMedium.get(15).drawString("DEMISE", posX + 16.0f, posY + 15.0f, Color.white.getRGB());
+        Fonts.outfitThin.get(15).drawString("CLIENT", posX + 18.0f + Fonts.outfitMedium.get(15).getStringWidth("DEMISE"), posY + 15.0f, new Color(145, 160, 190, 220).getRGB());
 
         float navCenterX = posX + (width / 2.0f) - 95.0f;
         float navY = posY + 9.0f;
@@ -148,29 +159,29 @@ public class PanelGui extends GuiScreen {
 
         // tabs: mods and configs
         String modsText = "M O D S";
-        float modsWidth = Fonts.interMedium.get(10).getStringWidth(modsText) + 20.0f;
+        float modsWidth = Fonts.outfitRegular.get(10).getStringWidth(modsText) + 20.0f;
         if (modsSelected) {
-            RoundedUtils.drawRound(navCenterX, navY, modsWidth, 22.0f, 3.0f, new Color(255, 255, 255, 30));
+            RoundedUtils.drawRoundOutline(navCenterX, navY, modsWidth, 22.0f, 3.5f, 0.5f, new Color(255, 255, 255, 25), new Color(255, 255, 255, 45));
         } else {
-            RoundedUtils.drawRoundOutline(navCenterX, navY, modsWidth, 22.0f, 3.0f, 0.5f, new Color(0, 0, 0, 0), new Color(255, 255, 255, 20));
+            RoundedUtils.drawRoundOutline(navCenterX, navY, modsWidth, 22.0f, 3.5f, 0.5f, new Color(0, 0, 0, 0), new Color(255, 255, 255, 18));
         }
-        Fonts.interMedium.get(10).drawString(modsText, navCenterX + 10.0f, navY + 7.0f, Color.white.getRGB());
+        Fonts.outfitRegular.get(10).drawString(modsText, navCenterX + 10.0f, navY + 6.5f, Color.white.getRGB());
 
         String cfgText = "C O N F I G S";
-        float cfgWidth = Fonts.interMedium.get(10).getStringWidth(cfgText) + 20.0f;
+        float cfgWidth = Fonts.outfitRegular.get(10).getStringWidth(cfgText) + 20.0f;
         if (configsSelected) {
-            RoundedUtils.drawRound(navCenterX + modsWidth + 8.0f, navY, cfgWidth, 22.0f, 3.0f, new Color(255, 255, 255, 30));
+            RoundedUtils.drawRoundOutline(navCenterX + modsWidth + 8.0f, navY, cfgWidth, 22.0f, 3.5f, 0.5f, new Color(255, 255, 255, 25), new Color(255, 255, 255, 45));
         } else {
-            RoundedUtils.drawRoundOutline(navCenterX + modsWidth + 8.0f, navY, cfgWidth, 22.0f, 3.0f, 0.5f, new Color(0, 0, 0, 0), new Color(255, 255, 255, 20));
+            RoundedUtils.drawRoundOutline(navCenterX + modsWidth + 8.0f, navY, cfgWidth, 22.0f, 3.5f, 0.5f, new Color(0, 0, 0, 0), new Color(255, 255, 255, 18));
         }
-        Fonts.interMedium.get(10).drawString(cfgText, navCenterX + modsWidth + 18.0f, navY + 7.0f, Color.white.getRGB());
+        Fonts.outfitRegular.get(10).drawString(cfgText, navCenterX + modsWidth + 18.0f, navY + 6.5f, Color.white.getRGB());
 
         // close button
         float closeBtnX = posX + width - 30.0f;
         float closeBtnY = posY + 9.0f;
         boolean closeHovered = MouseUtils.isHovered(closeBtnX, closeBtnY, 20.0f, 20.0f, mouseX, mouseY);
-        RoundedUtils.drawRound(closeBtnX, closeBtnY, 20.0f, 20.0f, 3.0f, closeHovered ? new Color(255, 255, 255, 30) : new Color(25, 27, 34, 200));
-        Fonts.interBold.get(11).drawString("X", closeBtnX + 6.5f, closeBtnY + 5.0f, Color.white.getRGB());
+        RoundedUtils.drawRound(closeBtnX, closeBtnY, 20.0f, 20.0f, 3.0f, closeHovered ? new Color(220, 60, 60, 220) : new Color(25, 27, 34, 200));
+        Fonts.interBold.get(11).drawString("✕", closeBtnX + 6.0f, closeBtnY + 5.0f, Color.white.getRGB());
 
         float sidebarW = 125.0f;
         float sidebarY = posY + 41.0f;
@@ -182,7 +193,7 @@ public class PanelGui extends GuiScreen {
         float itemY = sidebarY + 6.0f;
         for (Category cat : categories) {
             boolean isSelected = (selectedCategory == cat && selectedConfigCategory == null && selectedSearchCategory == null);
-            boolean isHovered = MouseUtils.isHovered(posX + 6.0f, itemY, sidebarW - 12.0f, 19.0f, mouseX, mouseY);
+            boolean isHovered = MouseUtils.isHovered(posX + 6.0f, itemY, sidebarW - 12.0f, 20.0f, mouseX, mouseY);
 
             cat.setX(posX + 6.0f);
             cat.setY(itemY);
@@ -192,14 +203,15 @@ public class PanelGui extends GuiScreen {
             String catName = cat.getCategory().getName().substring(0, 1).toUpperCase() + cat.getCategory().getName().substring(1).toLowerCase();
 
             if (isSelected) {
-                // sharp minimalist active category container with subtle border
-                RoundedUtils.drawRoundOutline(posX + 6.0f, itemY, sidebarW - 12.0f, 19.0f, 2.0f, 0.5f, new Color(28, 31, 38, 255), new Color(255, 255, 255, 25));
-                Fonts.interMedium.get(11).drawString(catName, posX + 16.0f, itemY + 4.5f, Color.white.getRGB());
+                // active category pill with illuminated accent indicator
+                RoundedUtils.drawRoundOutline(posX + 6.0f, itemY, sidebarW - 12.0f, 20.0f, 3.0f, 0.5f, new Color(26, 30, 40, 255), new Color(70, 120, 230, 140));
+                RoundedUtils.drawRound(posX + 8.0f, itemY + 4.5f, 2.0f, 11.0f, 1.0f, new Color(80, 140, 255, 240));
+                Fonts.outfitMedium.get(10.5f).drawString(catName, posX + 16.0f, itemY + 5.0f, Color.white.getRGB());
             } else {
                 if (isHovered) {
-                    RoundedUtils.drawRound(posX + 6.0f, itemY, sidebarW - 12.0f, 19.0f, 2.0f, new Color(22, 24, 30, 200));
+                    RoundedUtils.drawRound(posX + 6.0f, itemY, sidebarW - 12.0f, 20.0f, 3.0f, new Color(22, 24, 30, 200));
                 }
-                Fonts.interMedium.get(11).drawString(catName, posX + 16.0f, itemY + 4.5f, new Color(140, 145, 155, 220).getRGB());
+                Fonts.outfitRegular.get(10.5f).drawString(catName, posX + 16.0f, itemY + 5.0f, new Color(135, 140, 155, 220).getRGB());
             }
 
             itemY += 22.0f;
@@ -212,24 +224,24 @@ public class PanelGui extends GuiScreen {
         float saveBtnW = sidebarW - 12.0f;
 
         boolean saveHover = MouseUtils.isHovered(posX + 6.0f, saveBtnY, saveBtnW, btnH, mouseX, mouseY);
-        RoundedUtils.drawRoundOutline(posX + 6.0f, saveBtnY, saveBtnW, btnH, 2.0f, 0.5f, saveHover ? new Color(28, 31, 38, 240) : new Color(18, 20, 25, 200), new Color(255, 255, 255, 22));
-        Fonts.interMedium.get(9).drawString("SAVE AS PROFILE", posX + 12.0f, saveBtnY + 4.5f, new Color(175, 180, 190, 220).getRGB());
+        RoundedUtils.drawRoundOutline(posX + 6.0f, saveBtnY, saveBtnW, btnH, 2.5f, 0.5f, saveHover ? new Color(28, 31, 38, 240) : new Color(18, 20, 25, 200), new Color(255, 255, 255, 22));
+        Fonts.outfitThin.get(9).drawString("SAVE AS PROFILE", posX + 12.0f, saveBtnY + 4.5f, new Color(175, 180, 190, 220).getRGB());
 
         boolean cfgHover = MouseUtils.isHovered(posX + 6.0f, cfgBtnY, saveBtnW, btnH, mouseX, mouseY);
-        RoundedUtils.drawRoundOutline(posX + 6.0f, cfgBtnY, saveBtnW, btnH, 2.0f, 0.5f, cfgHover ? new Color(34, 38, 48, 255) : new Color(24, 27, 34, 230), new Color(255, 255, 255, 30));
-        Fonts.interMedium.get(9).drawString("CONFIG MANAGER", posX + 12.0f, cfgBtnY + 4.5f, Color.white.getRGB());
+        RoundedUtils.drawRoundOutline(posX + 6.0f, cfgBtnY, saveBtnW, btnH, 2.5f, 0.5f, cfgHover ? new Color(34, 38, 48, 255) : new Color(24, 27, 34, 230), new Color(255, 255, 255, 30));
+        Fonts.outfitMedium.get(9).drawString("CONFIG MANAGER", posX + 12.0f, cfgBtnY + 4.5f, Color.white.getRGB());
 
         // subheader row: minimalist section breadcrumb and dedicated search bar
         String activeSection = selectedSearchCategory != null ? "SEARCH" : (selectedConfigCategory != null ? "CONFIGS" : (selectedCategory != null ? selectedCategory.getCategory().getName().toUpperCase() : "MODULES"));
         Fonts.interBold.get(10).drawString(">", posX + 138.0f, posY + 50.0f, new Color(200, 205, 215, 200).getRGB());
-        Fonts.interMedium.get(10).drawString(activeSection + " // DIRECTORY", posX + 148.0f, posY + 50.0f, new Color(145, 150, 160, 200).getRGB());
+        Fonts.outfitThin.get(10.5f).drawString(activeSection + " // DIRECTORY", posX + 148.0f, posY + 49.5f, new Color(145, 150, 165, 200).getRGB());
 
         float searchW = 135.0f;
         float searchH = 19.0f;
         float searchX = posX + width - searchW - 12.0f;
         float searchY = posY + 46.0f;
         boolean searchHovered = MouseUtils.isHovered(searchX, searchY, searchW, searchH, mouseX, mouseY);
-        RoundedUtils.drawRoundOutline(searchX, searchY, searchW, searchH, 2.0f, 0.5f, new Color(16, 18, 22, 230), searchHovered ? new Color(255, 255, 255, 45) : new Color(255, 255, 255, 22));
+        RoundedUtils.drawRoundOutline(searchX, searchY, searchW, searchH, 2.5f, 0.5f, new Color(16, 18, 22, 230), searchHovered ? new Color(255, 255, 255, 45) : new Color(255, 255, 255, 22));
 
         boolean isSearchActive = (selectedSearchCategory != null);
         String filter = searchCategoryComponent.getFilter();
@@ -242,14 +254,14 @@ public class PanelGui extends GuiScreen {
             String cursor = (System.currentTimeMillis() % 1000 > 500 ? "|" : "");
             String display = hasFilter ? filter + cursor : cursor;
             if (!hasFilter && cursor.isEmpty()) {
-                Fonts.interRegular.get(10).drawString("Search modules...", searchX + 17.0f, searchY + 4.5f, new Color(110, 115, 125, 180).getRGB());
+                Fonts.outfitThin.get(9.5f).drawString("Search modules...", searchX + 17.0f, searchY + 4.5f, new Color(110, 115, 125, 180).getRGB());
             } else {
-                Fonts.interRegular.get(10).drawString(display, searchX + 17.0f, searchY + 4.5f, Color.white.getRGB());
+                Fonts.outfitRegular.get(9.5f).drawString(display, searchX + 17.0f, searchY + 4.5f, Color.white.getRGB());
             }
         } else if (hasFilter) {
-            Fonts.interRegular.get(10).drawString(filter, searchX + 17.0f, searchY + 4.5f, Color.white.getRGB());
+            Fonts.outfitRegular.get(9.5f).drawString(filter, searchX + 17.0f, searchY + 4.5f, Color.white.getRGB());
         } else {
-            Fonts.interRegular.get(10).drawString("Search modules...", searchX + 17.0f, searchY + 4.5f, new Color(110, 115, 125, 180).getRGB());
+            Fonts.outfitThin.get(9.5f).drawString("Search modules...", searchX + 17.0f, searchY + 4.5f, new Color(110, 115, 125, 180).getRGB());
         }
 
         // draw interactive clear button when a query is present
@@ -339,10 +351,10 @@ public class PanelGui extends GuiScreen {
         }
 
         // render dark elevated tooltip box with crisp border
-        RoundedUtils.drawRoundOutline(tipX, tipY, tipW, tipH, 3.0f, 0.5f, new Color(12, 13, 17, 245), new Color(255, 255, 255, 30));
-        Fonts.interBold.get(10).drawString(name, tipX + 8.0f, tipY + 5.0f, Color.white.getRGB());
-        Fonts.interMedium.get(9).drawString(bindTag, tipX + tipW - bindW - 8.0f, tipY + 5.5f, new Color(150, 155, 170).getRGB());
-        Fonts.interRegular.get(9).drawString(desc, tipX + 8.0f, tipY + 16.0f, new Color(180, 185, 195).getRGB());
+        RoundedUtils.drawRoundOutline(tipX, tipY, tipW, tipH, 4.0f, 0.5f, new Color(12, 14, 18, 250), new Color(255, 255, 255, 30));
+        Fonts.outfitMedium.get(10).drawString(name, tipX + 8.0f, tipY + 5.0f, Color.white.getRGB());
+        Fonts.outfitThin.get(9).drawString(bindTag, tipX + tipW - bindW - 8.0f, tipY + 5.5f, new Color(150, 155, 170).getRGB());
+        Fonts.outfitThin.get(9).drawString(desc, tipX + 8.0f, tipY + 16.0f, new Color(180, 185, 195).getRGB());
     }
 
     private void drawFocusedSettingsModal(int mouseX, int mouseY) {
@@ -352,20 +364,20 @@ public class PanelGui extends GuiScreen {
         float modalH = height - 52.0f;
 
         // solid opaque background so underlying elements never bleed through
-        RoundedUtils.drawRoundOutline(modalX, modalY, modalW, modalH, 2.0f, 0.5f, new Color(12, 13, 17, 255), new Color(255, 255, 255, 20));
+        RoundedUtils.drawRoundOutline(modalX, modalY, modalW, modalH, 4.0f, 0.75f, new Color(13, 15, 20, 255), new Color(255, 255, 255, 24));
 
         boolean backHover = MouseUtils.isHovered(modalX + 8.0f, modalY + 6.0f, 48.0f, 18.0f, mouseX, mouseY);
-        RoundedUtils.drawRoundOutline(modalX + 8.0f, modalY + 6.0f, 48.0f, 18.0f, 2.0f, 0.5f, backHover ? new Color(32, 36, 46, 255) : new Color(20, 23, 29, 240), new Color(255, 255, 255, 25));
-        Fonts.interMedium.get(10).drawString("← BACK", modalX + 11.0f, modalY + 10.5f, Color.white.getRGB());
+        RoundedUtils.drawRoundOutline(modalX + 8.0f, modalY + 6.0f, 48.0f, 18.0f, 2.5f, 0.5f, backHover ? new Color(32, 36, 46, 255) : new Color(20, 23, 29, 240), new Color(255, 255, 255, 25));
+        Fonts.outfitMedium.get(9.5f).drawString("← BACK", modalX + 11.0f, modalY + 10.5f, Color.white.getRGB());
 
-        Fonts.interBold.get(12).drawString(focusedModule.getModule().getName() + " Settings", modalX + 64.0f, modalY + 10.0f, Color.white.getRGB());
+        Fonts.outfitMedium.get(11.5f).drawString(focusedModule.getModule().getName() + " Settings", modalX + 64.0f, modalY + 10.0f, Color.white.getRGB());
 
         // interactive module keybind capsule button placed in modal header row
         int bindKey = focusedModule.getModule().getKeyBind();
         String keyName = bindKey == 0 ? "NONE" : Keyboard.getKeyName(bindKey);
         if (keyName == null) keyName = "NONE";
         String bindText = bindingListening ? "BIND: ..." : "BIND: " + keyName;
-        float bindBtnW = Math.max(68.0f, Fonts.interMedium.get(10).getStringWidth(bindText) + 16.0f);
+        float bindBtnW = Math.max(68.0f, Fonts.outfitMedium.get(9.5f).getStringWidth(bindText) + 16.0f);
         float bindBtnX = modalX + modalW - bindBtnW - 10.0f;
         float bindBtnY = modalY + 6.0f;
         float bindBtnH = 18.0f;
@@ -377,16 +389,16 @@ public class PanelGui extends GuiScreen {
         Color bindBorder = bindingListening
                 ? new Color(220, 225, 235, 160)
                 : new Color(255, 255, 255, 25);
-        RoundedUtils.drawRoundOutline(bindBtnX, bindBtnY, bindBtnW, bindBtnH, 2.0f, 0.5f, bindBg, bindBorder);
-        Fonts.interMedium.get(10).drawCenteredString(bindText, bindBtnX + bindBtnW / 2.0f, bindBtnY + 4.5f, bindingListening ? Color.white.getRGB() : new Color(200, 205, 215).getRGB());
+        RoundedUtils.drawRoundOutline(bindBtnX, bindBtnY, bindBtnW, bindBtnH, 2.5f, 0.5f, bindBg, bindBorder);
+        Fonts.outfitMedium.get(9.5f).drawCenteredString(bindText, bindBtnX + bindBtnW / 2.0f, bindBtnY + 4.5f, bindingListening ? Color.white.getRGB() : new Color(200, 205, 215).getRGB());
 
         RenderUtils.drawRect(modalX, modalY + 28.0f, modalW, 1.0f, new Color(255, 255, 255, 12).getRGB());
 
-        // render module description text below modal header line
+        // render module description text below modal header line in thin outfit font
         String desc = focusedModule.getModule().getDescription();
         boolean hasDesc = desc != null && !desc.isEmpty();
         if (hasDesc) {
-            Fonts.interRegular.get(9).drawString(desc, modalX + 12.0f, modalY + 34.0f, new Color(150, 155, 170).getRGB());
+            Fonts.outfitThin.get(9.5f).drawString(desc, modalX + 12.0f, modalY + 34.0f, new Color(150, 155, 170).getRGB());
         }
 
         float settingsStartY = modalY + (hasDesc ? 48.0f : 34.0f);
@@ -394,8 +406,8 @@ public class PanelGui extends GuiScreen {
 
         // empty state message for modules that only configure keybinds
         if (focusedModule.getSettings().isEmpty()) {
-            Fonts.interRegular.get(10).drawString("No configurable values for this module.", modalX + 12.0f, settingsStartY + 10.0f, new Color(140, 145, 158).getRGB());
-            Fonts.interRegular.get(9).drawString("Click the BIND button in the top-right above to change its key.", modalX + 12.0f, settingsStartY + 24.0f, new Color(100, 105, 115).getRGB());
+            Fonts.outfitRegular.get(9.5f).drawString("No configurable values for this module.", modalX + 12.0f, settingsStartY + 10.0f, new Color(140, 145, 158).getRGB());
+            Fonts.outfitThin.get(9).drawString("Click the BIND button in the top-right above to change its key.", modalX + 12.0f, settingsStartY + 24.0f, new Color(100, 105, 115).getRGB());
         }
 
         float totalH = 0.0f;

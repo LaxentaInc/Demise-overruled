@@ -91,9 +91,10 @@ public class SearchCategory implements IComponent {
 
             int cols = contentWidth > 320.0f ? 2 : 1;
             float colGap = 6.0f;
-            float rowGap = 4.0f;
+            float rowGap = 5.0f;
             float cardWidth = (contentWidth - (cols - 1) * colGap) / cols;
-            float cardHeight = 26.0f;
+            // card height expanded to comfortably display both module title and description
+            float cardHeight = 38.0f;
 
             int totalRows = (filteredModules.size() + cols - 1) / cols;
             float totalHeight = totalRows * cardHeight + Math.max(0, totalRows - 1) * rowGap;
@@ -138,7 +139,14 @@ public class SearchCategory implements IComponent {
 
     @Override
     public void mouseClicked(int mouseX, int mouseY, int mouseButton) {
-        filteredModules.forEach(moduleComponent -> moduleComponent.mouseClicked(mouseX, mouseY, mouseButton));
+        float startX = PanelGui.posX + 136.0f;
+        float componentStartY = PanelGui.posY + 74.0f;
+        float contentWidth = Math.max(130.0f, PanelGui.width - 144.0f);
+        float viewHeight = Math.max(80.0f, PanelGui.height - 82.0f);
+        // ensure clicks only register if within the module viewport area
+        if (wtf.demise.utils.render.MouseUtils.isHovered(startX - 2.0f, componentStartY, contentWidth + 4.0f, viewHeight, mouseX, mouseY)) {
+            filteredModules.forEach(moduleComponent -> moduleComponent.mouseClicked(mouseX, mouseY, mouseButton));
+        }
     }
 
     @Override

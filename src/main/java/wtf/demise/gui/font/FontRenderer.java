@@ -169,6 +169,20 @@ public class FontRenderer {
         return height / 2f - getHeight() / 2f;
     }
 
+    // calculates character advance widths and truncates with ellipsis to prevent gui label clipping
+    public String trimStringToWidth(String text, float maxWidth) {
+        if (text == null) return "";
+        if (getStringWidth(text) <= maxWidth) return text;
+        String ellipsis = "...";
+        float ellipsisW = getStringWidth(ellipsis);
+        if (ellipsisW > maxWidth) return "";
+        int len = text.length();
+        while (len > 0 && getStringWidth(text.substring(0, len)) + ellipsisW > maxWidth) {
+            len--;
+        }
+        return text.substring(0, len).trim() + ellipsis;
+    }
+
     public final int getStringWidth(String text) {
 
         if (text == null) {

@@ -14,7 +14,11 @@ public enum Fonts {
     interRegular("inter/Inter_Regular"),
     interSemiBold("inter/Inter_SemiBold"),
     nursultan("others/Nursultan"),
-    urbanist("urbanist/Urbanist");
+    urbanist("urbanist/Urbanist"),
+    // geometric outfit fonts used for thin headers, descriptions, and sleek micro-typography
+    outfitThin("outfit/Outfit-Thin"),
+    outfitRegular("outfit/Outfit-Regular"),
+    outfitMedium("outfit/Outfit-Medium");
 
     private final String file;
     private final Float2ObjectMap<FontRenderer> fontMap = new Float2ObjectArrayMap<>();
@@ -43,17 +47,23 @@ public enum Fonts {
         Font font = null;
 
         try {
-            InputStream in = Preconditions.checkNotNull(
-                    Demise.class.getResourceAsStream("/assets/minecraft/" + Demise.INSTANCE.getClientName().toLowerCase() + "/font/" + file + ".ttf"), "Font resource is null"
-            );
-            font = Font.createFont(0, in).deriveFont(Font.PLAIN, size);
+            // resolve font binary from client assets directory with fallback protection
+            String path = "/assets/minecraft/" + Demise.INSTANCE.getClientName().toLowerCase() + "/font/" + file + ".ttf";
+            InputStream in = Demise.class.getResourceAsStream(path);
+            if (in == null) {
+                in = Demise.class.getResourceAsStream("/assets/minecraft/" + Demise.INSTANCE.getClientName().toLowerCase() + "/font/inter/Inter_Regular.ttf");
+            }
+            if (in != null) {
+                font = Font.createFont(Font.TRUETYPE_FONT, in).deriveFont(Font.PLAIN, size);
+            }
         } catch (Exception ex) {
-            throw new RuntimeException("Failed to create font", ex);
+            // fallback to standard system sans-serif font if font rasterizer encounters an io anomaly
+            font = new Font("SansSerif", Font.PLAIN, (int) size);
         }
         if (font != null) {
             return new FontRenderer(font, antiAlias);
         } else {
-            throw new RuntimeException("Failed to create font");
+            throw new RuntimeException("Failed to create font: " + file);
         }
     }
 
