@@ -22,10 +22,14 @@ import java.util.concurrent.CopyOnWriteArrayList;
 public class ModuleComponent implements IComponent {
     private Module module;
     private ModuleCategory category;
-    private float x, y, width = 140.0f, height = 38.0f;
+    private float x, y, width = 140.0f, height = 24.0f;
     private boolean isHovered, optionsHovered;
     public boolean visible;
     private final CopyOnWriteArrayList<Component> settings = new CopyOnWriteArrayList<>();
+
+    // smooth interpolation targets for hover and enable transitions
+    private float hoverAlpha = 0.0f;
+    private float enableAlpha = 0.0f;
 
     public ModuleComponent(Module module, ModuleCategory category) {
         this.category = category;
@@ -62,78 +66,78 @@ public class ModuleComponent implements IComponent {
 
     public void render(boolean shader) {
         boolean enabled = module.isEnabled();
+
+        // interpolate hover and enable alpha for buttery smooth transitions
+        float targetHover = isHovered ? 1.0f : 0.0f;
+        hoverAlpha += (targetHover - hoverAlpha) * 0.35f;
+        float targetEnable = enabled ? 1.0f : 0.0f;
+        enableAlpha += (targetEnable - enableAlpha) * 0.3f;
+
         if (!shader) {
-            // sleek dark container with rounded geometry and dynamic glint border
-            Color cardBg = enabled ?
-                    (isHovered ? new Color(22, 27, 36, 250) : new Color(17, 21, 29, 245)) :
-                    (isHovered ? new Color(18, 20, 26, 245) : new Color(13, 15, 19, 240));
-
-            Color borderCol = enabled ?
-                    new Color(90, 140, 245, 80) :
-                    (isHovered ? new Color(255, 255, 255, 30) : new Color(255, 255, 255, 14));
-
-            RoundedUtils.drawRoundOutline(x, y, width, height, 4.0f, enabled ? 0.75f : 0.5f, cardBg, borderCol);
-
-            // subtle illuminated vertical indicator along the left edge when module is active
-            if (enabled) {
-                RoundedUtils.drawRound(x + 2.0f, y + 8.0f, 2.0f, height - 16.0f, 1.0f, new Color(85, 145, 255, 220));
+            // base row background: near-invisible until hovered, then subtle lift
+            int hoverBgAlpha = (int) (hoverAlpha * 35);
+            if (hoverBgAlpha > 2) {
+                RoundedUtils.drawRound(x, y, width, height, 2.0f, new Color(255, 255, 255, hoverBgAlpha));
             }
 
-            // primary module title typography
-            int nameCol = enabled ? Color.white.getRGB() : (isHovered ? new Color(220, 225, 235).getRGB() : new Color(160, 165, 175).getRGB());
-            float textX = x + 10.0f;
-            float textY = y + 7.0f;
-            Fonts.interMedium.get(10.5f).drawString(module.getName(), textX, textY, nameCol);
+            // thin left accent bar animates in when module is enabled
+            if (enableAlpha > 0.05f) {
+                int barAlpha = (int) (enableAlpha * 255);
+                // accent color: soft violet that reads as intentional and distinctive
+                RoundedUtils.drawRound(x + 1.0f, y + 4.0f, 2.0f, height - 8.0f, 1.0f, new Color(124, 106, 239, barAlpha));
+            }
 
-            // inline keybind capsule indicator if a trigger key is configured
+            // module name: white when active, muted gray when off, brightens on hover
+            float textX = x + 9.0f;
+            float textY = y + (height - Fonts.interMedium.get(10.5f).getHeight()) / 2.0f;
+
+            int r, g, b;
+            if (enabled) {
+                // enabled: bright white text
+                r = 255; g = 255; b = 255;
+            } else {
+                // disabled: muted gray, brightens on hover
+                int base = 145;
+                int boost = (int) (hoverAlpha * 65);
+                r = base + boost; g = base + boost; b = base + boost + (int) (hoverAlpha * 10);
+            }
+            Fonts.interMedium.get(10.5f).drawString(module.getName(), textX, textY, new Color(Math.min(r, 255), Math.min(g, 255), Math.min(b, 255)).getRGB());
+
+            // keybind badge on the right side, only when bound
+            // position shifts left if dots button is visible to avoid overlap
+            float dotsZoneW = 18.0f;
             if (module.getKeyBind() != 0) {
                 String keyName = org.lwjglx.input.Keyboard.getKeyName(module.getKeyBind());
                 if (keyName != null && !keyName.isEmpty()) {
-                    float nameW = Fonts.interMedium.get(10.5f).getStringWidth(module.getName());
-                    Fonts.outfitThin.get(8.5f).drawString("[" + keyName + "]", textX + nameW + 5.0f, textY + 1.0f, new Color(125, 135, 155, 190).getRGB());
+                    float badgeW = Fonts.interRegular.get(8.5f).getStringWidth(keyName) + 8.0f;
+                    float badgeX = x + width - badgeW - dotsZoneW - 4.0f;
+                    float badgeY = y + (height - 12.0f) / 2.0f;
+                    // subtle dark pill behind the key name
+                    RoundedUtils.drawRound(badgeX, badgeY, badgeW, 12.0f, 2.0f, new Color(255, 255, 255, 12));
+                    Fonts.interRegular.get(8.5f).drawString(keyName, badgeX + 4.0f, badgeY + 2.0f, new Color(110, 115, 130).getRGB());
                 }
             }
 
-            // secondary module description line styled in thin outfit typography
-            String desc = module.getDescription();
-            if (desc == null || desc.trim().isEmpty()) {
-                desc = "No description available.";
+            // three-dot options button on the far right, visible on hover for discoverability
+            float dotsAlpha = Math.max(hoverAlpha, optionsHovered ? 1.0f : 0.0f);
+            if (dotsAlpha > 0.05f) {
+                float dotsX = x + width - 14.0f;
+                float dotsY = y + (height - Fonts.interMedium.get(10).getHeight()) / 2.0f;
+                int dotsCol = optionsHovered
+                        ? new Color(255, 255, 255, (int) (dotsAlpha * 255)).getRGB()
+                        : new Color(120, 120, 140, (int) (dotsAlpha * 180)).getRGB();
+                Fonts.interMedium.get(10).drawString("•••", dotsX - 4.0f, dotsY, dotsCol);
             }
-            float maxDescW = Math.max(20.0f, width - 56.0f);
-            String displayDesc = Fonts.outfitThin.get(9).trimStringToWidth(desc, maxDescW);
-            int descCol = enabled ? new Color(145, 165, 195, 220).getRGB() : new Color(105, 110, 125, 200).getRGB();
-            Fonts.outfitThin.get(9).drawString(displayDesc, textX, y + 22.0f, descCol);
-
-            // options settings drawer trigger button positioned on the right
-            float dotsX = x + width - 15.0f;
-            float dotsY = y + (height - Fonts.interBold.get(10).getHeight()) / 2.0f - 1.0f;
-            if (optionsHovered) {
-                RoundedUtils.drawRound(x + width - 21.0f, y + (height - 18.0f) / 2.0f, 18.0f, 18.0f, 3.0f, new Color(255, 255, 255, 25));
-            }
-            int dotsCol = optionsHovered ? Color.white.getRGB() : new Color(110, 115, 130).getRGB();
-            Fonts.interBold.get(10).drawString("•••", dotsX - 1.0f, dotsY, dotsCol);
-
-            // hardware toggle switch indicator
-            float switchW = 18.0f;
-            float switchH = 9.5f;
-            float switchX = x + width - 42.0f;
-            float switchY = y + (height - switchH) / 2.0f;
-
-            Color switchTrack = enabled ? new Color(60, 130, 245, 240) : new Color(28, 31, 38, 240);
-            Color switchKnob = enabled ? Color.white : new Color(110, 115, 128, 240);
-
-            RoundedUtils.drawRound(switchX, switchY, switchW, switchH, 2.0f, switchTrack);
-            float knobX = enabled ? (switchX + switchW - 7.5f) : (switchX + 1.5f);
-            RoundedUtils.drawRound(knobX, switchY + 1.5f, 6.0f, 6.5f, 1.5f, switchKnob);
         } else {
-            RoundedUtils.drawShaderRound(x, y, width, height, 4.0f, Color.black);
+            RoundedUtils.drawShaderRound(x, y, width, height, 2.0f, Color.black);
         }
     }
 
     @Override
     public void drawScreen(int mouseX, int mouseY) {
         this.isHovered = MouseUtils.isHovered(x, y, width, height, mouseX, mouseY);
-        this.optionsHovered = MouseUtils.isHovered(x + width - 22.0f, y, 22.0f, height, mouseX, mouseY);
+        // dots hit area covers the right 18px strip of the row
+        this.optionsHovered = MouseUtils.isHovered(x + width - 18.0f, y, 18.0f, height, mouseX, mouseY);
     }
 
     @Override
@@ -141,8 +145,8 @@ public class ModuleComponent implements IComponent {
         // compute hit test directly with incoming event coordinates to support touchscreen taps
         boolean hovered = MouseUtils.isHovered(x, y, width, height, mouseX, mouseY);
         if (visible && hovered) {
-            boolean optHovered = MouseUtils.isHovered(x + width - 22.0f, y, 22.0f, height, mouseX, mouseY);
-            // clicking the options dots or right clicking opens module settings drawer for any module
+            // clicking the dots zone or right-clicking anywhere opens settings panel
+            boolean optHovered = MouseUtils.isHovered(x + width - 18.0f, y, 18.0f, height, mouseX, mouseY);
             if (optHovered || mouseButton == 1) {
                 PanelGui.focusedModule = this;
                 return;

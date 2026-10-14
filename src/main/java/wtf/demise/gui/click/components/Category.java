@@ -52,18 +52,19 @@ public class Category implements IComponent {
         if (isSelected) {
             handleScroll();
 
-            float startX = PanelGui.posX + 136.0f;
-            // start modules below the subheader search row to prevent any visual overlap
-            float componentStartY = PanelGui.posY + 74.0f;
-            float contentWidth = Math.max(130.0f, PanelGui.width - 144.0f);
-            float viewHeight = Math.max(80.0f, PanelGui.height - 82.0f);
+            float startX = PanelGui.posX + 118.0f;
+            // module list viewport starts below the subheader strip
+            float componentStartY = PanelGui.posY + 62.0f;
+            float contentWidth = Math.max(130.0f, PanelGui.width - 126.0f);
+            float viewHeight = Math.max(80.0f, PanelGui.height - 70.0f);
 
-            int cols = contentWidth > 320.0f ? 2 : 1;
-            float colGap = 6.0f;
-            float rowGap = 5.0f;
-            float cardWidth = (contentWidth - (cols - 1) * colGap) / cols;
-            // card height expanded to comfortably display both module title and description
-            float cardHeight = 38.0f;
+            // single column flat list for maximum readability and density
+            int cols = 1;
+            float colGap = 0.0f;
+            float rowGap = 1.0f;
+            float cardWidth = contentWidth;
+            // compact row height matching vape-style module list
+            float cardHeight = 24.0f;
 
             int totalRows = (moduleComponents.size() + cols - 1) / cols;
             float totalHeight = totalRows * cardHeight + Math.max(0, totalRows - 1) * rowGap;
@@ -101,10 +102,10 @@ public class Category implements IComponent {
 
     @Override
     public void mouseClicked(int mouseX, int mouseY, int mouseButton) {
-        float startX = PanelGui.posX + 136.0f;
-        float componentStartY = PanelGui.posY + 74.0f;
-        float contentWidth = Math.max(130.0f, PanelGui.width - 144.0f);
-        float viewHeight = Math.max(80.0f, PanelGui.height - 82.0f);
+        float startX = PanelGui.posX + 118.0f;
+        float componentStartY = PanelGui.posY + 62.0f;
+        float contentWidth = Math.max(130.0f, PanelGui.width - 126.0f);
+        float viewHeight = Math.max(80.0f, PanelGui.height - 70.0f);
         // ensure touch and mouse click events only propagate if within the scroll viewport
         if (wtf.demise.utils.render.MouseUtils.isHovered(startX - 2.0f, componentStartY, contentWidth + 4.0f, viewHeight, mouseX, mouseY)) {
             moduleComponents.forEach(moduleComponent -> moduleComponent.mouseClicked(mouseX, mouseY, mouseButton));
