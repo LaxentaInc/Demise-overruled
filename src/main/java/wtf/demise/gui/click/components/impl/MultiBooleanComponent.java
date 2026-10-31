@@ -24,31 +24,33 @@ public class MultiBooleanComponent extends Component {
 
     @Override
     public void drawScreen(int mouseX, int mouseY) {
-        float heightoff = 4;
-        float lineHeight = Fonts.interRegular.get(13).getHeight() + 2;
+        float heightoff = 4.0f;
+        float lineHeight = Fonts.urbanist.get(14.0f).getHeight() + 3.0f;
 
-        Fonts.interSemiBold.get(15).drawString(setting.getName(), getX() + 4, getY() + 2, -1);
+        // crisp urbanist font matching client watermark
+        Fonts.urbanist.get(15.0f).drawString(setting.getName(), getX() + 6.0f, getY() + 3.0f, new Color(245, 248, 255, 255).getRGB());
 
         for (BoolValue boolValue : setting.getValues()) {
             select.putIfAbsent(boolValue, new EaseOutSine(100, 1));
             select.get(boolValue).setDirection(boolValue.get() ? Direction.FORWARDS : Direction.BACKWARDS);
 
-            Fonts.interRegular.get(13).drawString(boolValue.getName(), getX() + 8, getY() + Fonts.interRegular.get(15).getHeight() + 1 + heightoff, ColorUtils.interpolateColor2(new Color(128, 128, 128), Color.white, (float) select.get(boolValue).getOutput()));
+            int itemColor = ColorUtils.interpolateColor2(new Color(148, 163, 184, 255), Color.white, (float) select.get(boolValue).getOutput());
+            Fonts.urbanist.get(14.0f).drawString(boolValue.getName(), getX() + 10.0f, getY() + Fonts.urbanist.get(15.0f).getHeight() + 2.0f + heightoff, itemColor);
 
             heightoff += lineHeight;
         }
 
-        setHeight(Fonts.interRegular.get(15).getHeight() + 4 + heightoff);
+        setHeight(Fonts.urbanist.get(15.0f).getHeight() + 6.0f + heightoff);
         super.drawScreen(mouseX, mouseY);
     }
 
     @Override
     public void mouseClicked(int mouseX, int mouseY, int mouse) {
-        float heightoff = 4;
-        float lineHeight = Fonts.interRegular.get(13).getHeight() + 2;
+        float heightoff = 4.0f;
+        float lineHeight = Fonts.urbanist.get(14.0f).getHeight() + 3.0f;
 
         for (BoolValue boolValue : setting.getValues()) {
-            if (MouseUtils.isHovered(getX() + 8, getY() + Fonts.interRegular.get(15).getHeight() + 1 + heightoff, Fonts.interRegular.get(13).getStringWidth(boolValue.getName()), Fonts.interRegular.get(13).getHeight(), mouseX, mouseY) && mouse == 0) {
+            if (MouseUtils.isHovered(getX() + 10.0f, getY() + Fonts.urbanist.get(15.0f).getHeight() + 2.0f + heightoff, Fonts.urbanist.get(14.0f).getStringWidth(boolValue.getName()), Fonts.urbanist.get(14.0f).getHeight(), mouseX, mouseY) && mouse == 0) {
                 boolValue.set(!boolValue.get());
                 SoundUtil.playSound("demise.tick");
             }

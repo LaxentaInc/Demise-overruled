@@ -22,7 +22,7 @@ public class StringComponent extends Component {
 
     public StringComponent(TextValue setting) {
         this.setting = setting;
-        setHeight(Fonts.interRegular.get(14).getHeight() * 2 + 4);
+        setHeight(Fonts.urbanist.get(15.0f).getHeight() + Fonts.urbanist.get(14.0f).getHeight() + 8.0f);
         input.setDirection(Direction.BACKWARDS);
     }
 
@@ -34,14 +34,14 @@ public class StringComponent extends Component {
             text = text.replaceAll("[a-zA-Z]", "");
         }
         String textToDraw = setting.get().isEmpty() && !inputting ? "Empty..." : setting.getText();
-        Fonts.interRegular.get(14).drawString(setting.getName(), getX() + 4, getY(), -1);
-        drawTextWithLineBreaks(textToDraw + (inputting && text.length() < 59 && System.currentTimeMillis() % 1000 > 500 ? "|" : ""), getX() + 6, getY() + Fonts.interRegular.get(14).getHeight() + 2);
+        Fonts.urbanist.get(15.0f).drawString(setting.getName(), getX() + 6.0f, getY() + 2.0f, new Color(245, 248, 255, 255).getRGB());
+        drawTextWithLineBreaks(textToDraw + (inputting && text.length() < 59 && System.currentTimeMillis() % 1000 > 500 ? "|" : ""), getX() + 8.0f, getY() + Fonts.urbanist.get(15.0f).getHeight() + 4.0f);
         super.drawScreen(mouseX, mouseY);
     }
 
     @Override
     public void mouseClicked(int mouseX, int mouseY, int mouseButton) {
-        if (MouseUtils.isHovered(getX(), getY() + Fonts.interRegular.get(14).getHeight() + 4, getWidth(), 4, mouseX, mouseY) && mouseButton == 0) {
+        if (MouseUtils.isHovered(getX(), getY() + Fonts.urbanist.get(15.0f).getHeight() + 4.0f, getWidth(), Fonts.urbanist.get(14.0f).getHeight() + 4.0f, mouseX, mouseY) && mouseButton == 0) {
             inputting = !inputting;
         } else {
             inputting = false;

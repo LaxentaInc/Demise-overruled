@@ -81,60 +81,81 @@ public class SearchCategory implements IComponent {
     }
 
     public void render(boolean shader) {
-        if (isSelected) {
-            handleScroll();
-
-            float startX = PanelGui.posX + 118.0f;
-            float componentStartY = PanelGui.posY + 62.0f;
-            float contentWidth = Math.max(130.0f, PanelGui.width - 126.0f);
-            float viewHeight = Math.max(80.0f, PanelGui.height - 70.0f);
-
-            int cols = 1;
-            float colGap = 0.0f;
-            float rowGap = 1.0f;
-            float cardWidth = contentWidth;
-            // compact row height matching module list density
-            float cardHeight = 24.0f;
-
-            int totalRows = (filteredModules.size() + cols - 1) / cols;
-            float totalHeight = totalRows * cardHeight + Math.max(0, totalRows - 1) * rowGap;
-
-            maxScroll = Math.max(0, totalHeight - viewHeight);
-            targetScrollOffset = MathHelper.clamp_float(targetScrollOffset, 0.0f, maxScroll);
-            scrollOffset = MathUtils.interpolate(scrollOffset, targetScrollOffset, 0.25f);
-
-            if (filteredModules.isEmpty()) {
-                String emptyMsg = filter.isEmpty() ? "No modules available." : "No modules found matching \"" + filter + "\"";
-                Fonts.interRegular.get(10).drawString(emptyMsg, startX + 6.0f, componentStartY + 14.0f, new Color(130, 135, 145, 200).getRGB());
-                return;
-            }
-
-            RenderUtils.scissor(startX - 2.0f, componentStartY, contentWidth + 4.0f, viewHeight, PanelGui.interpolatedScale);
-            GL11.glEnable(GL11.GL_SCISSOR_TEST);
-
-            float componentOffsetY = componentStartY + 2.0f;
-            for (int i = 0; i < filteredModules.size(); i++) {
-                int col = i % cols;
-                int row = i / cols;
-                float cardX = startX + col * (cardWidth + colGap);
-                float cardY = componentOffsetY + row * (cardHeight + rowGap) - scrollOffset;
-
-                ModuleComponent module = filteredModules.get(i);
-                module.setX(cardX);
-                module.setY(cardY);
-                module.setWidth(cardWidth);
-                module.setHeight(cardHeight);
-                module.render(shader);
-                module.setVisible(cardY + cardHeight >= componentStartY && cardY <= componentStartY + viewHeight);
-            }
-
-            GL11.glDisable(GL11.GL_SCISSOR_TEST);
-        }
+        drawScreen(0, 0);
     }
 
     @Override
     public void drawScreen(int mouseX, int mouseY) {
-        filteredModules.forEach(moduleComponent -> moduleComponent.drawScreen(mouseX, mouseY));
+        handleScroll();
+
+        float startX = PanelGui.posX + 118.0f + 10.0f;
+        float componentStartY = PanelGui.posY + 34.0f;
+        float contentWidth = Math.max(120.0f, PanelGui.width - 118.0f - 20.0f);
+        float viewHeight = Math.max(50.0f, PanelGui.height - 42.0f);
+
+        int cols = contentWidth >= 260.0f ? 2 : 1;
+        float colGap = 8.0f;
+        float rowGap = 8.0f;
+        float cardWidth = cols == 2 ? (contentWidth - colGap) / 2.0f : contentWidth;
+
+        float leftColY = componentStartY;
+        float rightColY = componentStartY;
+
+        for (ModuleComponent module : filteredModules) {
+            float cardH = module.computeCardHeight();
+            if (cols == 1 || leftColY <= rightColY) {
+                leftColY += cardH + rowGap;
+            } else {
+                rightColY += cardH + rowGap;
+            }
+        }
+
+        float totalHeight = Math.max(leftColY, rightColY) - componentStartY;
+        maxScroll = Math.max(0, totalHeight - viewHeight);
+        targetScrollOffset = MathHelper.clamp_float(targetScrollOffset, 0.0f, maxScroll);
+        scrollOffset = MathUtils.interpolate(scrollOffset, targetScrollOffset, 0.25f);
+
+        if (filteredModules.isEmpty()) {
+            String emptyMsg = filter.isEmpty() ? "Type to search modules..." : "No modules found matching \"" + filter + "\"";
+            Fonts.urbanist.get(15.0f).drawString(emptyMsg, startX + 6.0f, componentStartY + 14.0f, new Color(148, 163, 184, 255).getRGB());
+            return;
+        }
+
+        RenderUtils.scissor(startX - 2.0f, componentStartY, contentWidth + 4.0f, viewHeight, PanelGui.interpolatedScale);
+        GL11.glEnable(GL11.GL_SCISSOR_TEST);
+
+        leftColY = componentStartY;
+        rightColY = componentStartY;
+
+        for (ModuleComponent module : filteredModules) {
+            float cardH = module.computeCardHeight();
+            float cardX;
+            float cardY;
+
+            if (cols == 1 || leftColY <= rightColY) {
+                cardX = startX;
+                cardY = leftColY - scrollOffset;
+                leftColY += cardH + rowGap;
+            } else {
+                cardX = startX + cardWidth + colGap;
+                cardY = rightColY - scrollOffset;
+                rightColY += cardH + rowGap;
+            }
+
+            module.setX(cardX);
+            module.setY(cardY);
+            module.setWidth(cardWidth);
+            module.setHeight(cardH);
+
+            boolean isCardVisible = (cardY + cardH >= componentStartY && cardY <= componentStartY + viewHeight);
+            module.setVisible(isCardVisible);
+
+            if (isCardVisible) {
+                module.drawCard(mouseX, mouseY, false);
+            }
+        }
+
+        GL11.glDisable(GL11.GL_SCISSOR_TEST);
     }
 
     @Override

@@ -16,28 +16,28 @@ public class BooleanComponent extends Component {
     private final BoolValue setting;
     private final SmoothStepAnimation toggleAnimation = new SmoothStepAnimation(180, 1);
 
-    // deep modern dark palette matching card gui reference
-    private static final Color COLOR_TRACK_OFF = new Color(26, 32, 44, 255);
+    // modern high contrast palette with razor-sharp readability
+    private static final Color COLOR_TRACK_OFF = new Color(26, 34, 48, 255);
     private static final Color COLOR_TRACK_ON = new Color(0, 132, 255, 255);
-    private static final Color COLOR_KNOB = new Color(240, 244, 250, 255);
-    private static final Color COLOR_TEXT = new Color(175, 185, 200, 255);
+    private static final Color COLOR_KNOB = new Color(255, 255, 255, 255);
+    private static final Color COLOR_TEXT = new Color(245, 248, 255, 255);
 
     public BooleanComponent(BoolValue setting) {
         this.setting = setting;
         this.toggleAnimation.setDirection(setting.get() ? Direction.FORWARDS : Direction.BACKWARDS);
-        // compact inline row height for card layout
-        setHeight(18.0f);
+        // generous height providing proper breathing room
+        setHeight(22.0f);
     }
 
     @Override
     public void drawScreen(int mouseX, int mouseY) {
         this.toggleAnimation.setDirection(this.setting.get() ? Direction.FORWARDS : Direction.BACKWARDS);
 
-        // setting label with clean secondary typography
-        Fonts.interRegular.get(9.5f).drawString(setting.getName(), getX() + 6.0f, getY() + 4.5f, COLOR_TEXT.getRGB());
+        // crisp readable urbanist typography matching client watermark
+        Fonts.urbanist.get(15.0f).drawString(setting.getName(), getX() + 6.0f, getY() + 5.0f, COLOR_TEXT.getRGB());
 
         float switchW = 18.0f;
-        float switchH = 9.0f;
+        float switchH = 10.0f;
         float switchX = getX() + getWidth() - switchW - 6.0f;
         float switchY = getY() + (getHeight() - switchH) / 2.0f;
 
@@ -45,10 +45,10 @@ public class BooleanComponent extends Component {
         Color trackBg = ColorUtils.interpolateColorC(COLOR_TRACK_OFF, COLOR_TRACK_ON, anim);
 
         // rounded pill track
-        RoundedUtils.drawRound(switchX, switchY, switchW, switchH, 4.5f, trackBg);
-        
+        RoundedUtils.drawRound(switchX, switchY, switchW, switchH, 5.0f, trackBg);
+
         // sliding circular knob
-        float knobDiameter = 6.0f;
+        float knobDiameter = 7.0f;
         float knobX = switchX + 1.5f + (switchW - knobDiameter - 3.0f) * anim;
         float knobY = switchY + (switchH - knobDiameter) / 2.0f;
         RoundedUtils.drawRound(knobX, knobY, knobDiameter, knobDiameter, knobDiameter / 2.0f, COLOR_KNOB);
@@ -58,7 +58,6 @@ public class BooleanComponent extends Component {
 
     @Override
     public void mouseClicked(int mouseX, int mouseY, int mouseButton) {
-        // responsive click on the entire setting row
         if (mouseButton == 0 && MouseUtils.isHovered(getX(), getY(), getWidth(), getHeight(), mouseX, mouseY)) {
             this.setting.set(!this.setting.get());
             SoundUtil.playSound("demise.tick");

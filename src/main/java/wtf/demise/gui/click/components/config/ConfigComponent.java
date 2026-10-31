@@ -62,10 +62,11 @@ public class ConfigComponent implements IComponent {
                 RoundedUtils.drawRound(x + slideOffset + 2.0f, y + 6.0f, 3.0f, 20.0f, 1.5f, new Color(56, 189, 248, 240));
             }
 
-            Fonts.interMedium.get(14).drawString(name, x + 12.0f + slideOffset, y + 10.0f, Color.white.getRGB());
+            // crisp urbanist typography matching client watermark
+            Fonts.urbanist.get(15.0f).drawString(name, x + 12.0f + slideOffset, y + 9.0f, Color.white.getRGB());
 
-            float saveWidth = Fonts.interRegular.get(12).getStringWidth("Save") + 12.0f;
-            float deleteWidth = Fonts.interRegular.get(12).getStringWidth("Delete") + 12.0f;
+            float saveWidth = Fonts.urbanist.get(13.0f).getStringWidth("Save") + 14.0f;
+            float deleteWidth = Fonts.urbanist.get(13.0f).getStringWidth("Delete") + 14.0f;
 
             float deleteX = x + width - 10.0f - deleteWidth + slideOffset;
             float saveX = deleteX - 6.0f - saveWidth;
@@ -74,10 +75,10 @@ public class ConfigComponent implements IComponent {
             Color deleteBg = deleteHovered ? new Color(239, 68, 68, 200) : new Color(38, 42, 50, 200);
 
             RoundedUtils.drawRound(saveX, y + 7.0f, saveWidth, 18.0f, 4.0f, saveBg);
-            Fonts.interRegular.get(12).drawString("Save", saveX + 6.0f, y + 10.0f, Color.white.getRGB());
+            Fonts.urbanist.get(13.0f).drawString("Save", saveX + 7.0f, y + 9.5f, Color.white.getRGB());
 
             RoundedUtils.drawRound(deleteX, y + 7.0f, deleteWidth, 18.0f, 4.0f, deleteBg);
-            Fonts.interRegular.get(12).drawString("Delete", deleteX + 6.0f, y + 10.0f, Color.white.getRGB());
+            Fonts.urbanist.get(13.0f).drawString("Delete", deleteX + 7.0f, y + 9.5f, Color.white.getRGB());
         } else {
             RoundedUtils.drawShaderRound(x + slideOffset, y, width, 32.0f, 7.0f, Color.black);
         }
@@ -87,8 +88,8 @@ public class ConfigComponent implements IComponent {
     public void drawScreen(int mouseX, int mouseY) {
         float width = Math.max(250.0f, PanelGui.width - 20.0f);
         float slideOffset = (width / 6.0f) * (1.0f - slideProgress);
-        float saveWidth = Fonts.interRegular.get(12).getStringWidth("Save") + 12.0f;
-        float deleteWidth = Fonts.interRegular.get(12).getStringWidth("Delete") + 12.0f;
+        float saveWidth = Fonts.urbanist.get(13.0f).getStringWidth("Save") + 14.0f;
+        float deleteWidth = Fonts.urbanist.get(13.0f).getStringWidth("Delete") + 14.0f;
 
         float deleteX = x + width - 10.0f - deleteWidth + slideOffset;
         float saveX = deleteX - 6.0f - saveWidth;

@@ -26,22 +26,23 @@ public class ColorPickerComponent extends Component {
     @Override
     public void drawScreen(int mouseX, int mouseY) {
         open.setDirection(opened ? Direction.FORWARDS : Direction.BACKWARDS);
-        this.setHeight((float) (Fonts.interRegular.get(15).getHeight() + ((Fonts.interRegular.get(15).getHeight() + 2 + 45 + 2 + 12) * open.getOutput())));
+        this.setHeight((float) (Fonts.urbanist.get(15.0f).getHeight() + ((Fonts.urbanist.get(15.0f).getHeight() + 2 + 45 + 2 + 12) * open.getOutput())));
 
         final float[] hsb = new float[]{setting.getHue(), setting.getSaturation(), setting.getBrightness()};
         final float alpha = setting.getAlpha();
 
-        Fonts.interRegular.get(15).drawString(setting.getName(), getX() + 4, getY(), -1);
-        RoundedUtils.drawRound(getX() + getWidth() - 18, getY(), 15, Fonts.interRegular.get(15).getHeight() - 3, 2, setting.get());
+        // crisp urbanist typography matching client watermark
+        Fonts.urbanist.get(15.0f).drawString(setting.getName(), getX() + 6.0f, getY() + 2.0f, new Color(245, 248, 255, 255).getRGB());
+        RoundedUtils.drawRound(getX() + getWidth() - 20, getY() + 1.0f, 15, Fonts.urbanist.get(15.0f).getHeight() - 2, 3, setting.get());
 
         if (opened) {
-            RoundedUtils.drawGradientRound(getX() + 2, getY() + Fonts.interRegular.get(15).getHeight() + 2, getWidth() - 4, (float) (45 * open.getOutput()), 4, Color.BLACK, Color.WHITE, Color.BLACK, Color.getHSBColor(setting.getHue(), 1, 1));
+            RoundedUtils.drawGradientRound(getX() + 2, getY() + Fonts.urbanist.get(15.0f).getHeight() + 2, getWidth() - 4, (float) (45 * open.getOutput()), 4, Color.BLACK, Color.WHITE, Color.BLACK, Color.getHSBColor(setting.getHue(), 1, 1));
 
             for (int max = (int) (getWidth() - 8), i = 0; i < max; i++) {
-                RoundedUtils.drawRound(getX() + i + 4, (float) (getY() + Fonts.interRegular.get(15).getHeight() + 2 + (45 * open.getOutput()) + 4), 2, 4, 2, Color.getHSBColor(i / (float) max, 1, 1));
+                RoundedUtils.drawRound(getX() + i + 4, (float) (getY() + Fonts.urbanist.get(15.0f).getHeight() + 2 + (45 * open.getOutput()) + 4), 2, 4, 2, Color.getHSBColor(i / (float) max, 1, 1));
             }
 
-            float alphaSliderY = (float) (getY() + Fonts.interRegular.get(15).getHeight() + 2 + (45 * open.getOutput()) + 12);
+            float alphaSliderY = (float) (getY() + Fonts.urbanist.get(15.0f).getHeight() + 2 + (45 * open.getOutput()) + 12);
             drawCheckerboard(getX() + 4, alphaSliderY, getWidth() - 8, 4);
 
             for (int max = (int) (getWidth() - 8), i = 0; i < max; i++) {

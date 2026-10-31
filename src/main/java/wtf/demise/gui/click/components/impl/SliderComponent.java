@@ -21,34 +21,34 @@ public class SliderComponent extends Component {
     private final TimerUtils soundTimer = new TimerUtils();
 
     // dark theme palette matching modern card reference
-    private static final Color COLOR_TRACK_BG = new Color(22, 28, 38, 255);
+    private static final Color COLOR_TRACK_BG = new Color(24, 32, 46, 255);
     private static final Color COLOR_TRACK_FILL = new Color(0, 132, 255, 255);
     private static final Color COLOR_THUMB = new Color(74, 172, 255, 255);
-    private static final Color COLOR_TEXT_LABEL = new Color(175, 185, 200, 255);
-    private static final Color COLOR_TEXT_VALUE = new Color(210, 220, 235, 255);
+    private static final Color COLOR_TEXT_LABEL = new Color(245, 248, 255, 255);
+    private static final Color COLOR_TEXT_VALUE = new Color(245, 248, 255, 255);
 
     public SliderComponent(SliderValue setting) {
         this.setting = setting;
         previousSetting = setting.get();
-        // compact height for nested card layout
-        setHeight(20.0f);
+        // generous height providing proper breathing room
+        setHeight(23.0f);
     }
 
     @Override
     public void drawScreen(int mouseX, int mouseY) {
-        // setting name label on left
-        Fonts.interRegular.get(9.5f).drawString(setting.getName(), getX() + 6.0f, getY() + 4.5f, COLOR_TEXT_LABEL.getRGB());
+        // setting name label on left in crisp urbanist font
+        Fonts.urbanist.get(15.0f).drawString(setting.getName(), getX() + 6.0f, getY() + 5.0f, COLOR_TEXT_LABEL.getRGB());
 
-        // numeric value readout on right
+        // numeric value readout on right in crisp urbanist font
         String valStr = (setting.getIncrement() % 1 == 0) ? String.format("%.0f", setting.get()) : String.format("%.1f", setting.get());
-        float valWidth = Fonts.interRegular.get(9.0f).getStringWidth(valStr);
-        Fonts.interRegular.get(9.0f).drawString(valStr, getX() + getWidth() - valWidth - 6.0f, getY() + 4.5f, COLOR_TEXT_VALUE.getRGB());
+        float valWidth = Fonts.urbanist.get(15.0f).getStringWidth(valStr);
+        Fonts.urbanist.get(15.0f).drawString(valStr, getX() + getWidth() - valWidth - 6.0f, getY() + 5.0f, COLOR_TEXT_VALUE.getRGB());
 
         // slider track positioned horizontally between label and value
-        float trackX = getX() + 85.0f;
-        float trackW = getWidth() - 85.0f - valWidth - 14.0f;
-        float trackY = getY() + 8.5f;
-        float trackH = 2.5f;
+        float trackX = getX() + 90.0f;
+        float trackW = getWidth() - 90.0f - valWidth - 14.0f;
+        float trackY = getY() + 10.0f;
+        float trackH = 3.0f;
 
         if (trackW < 20.0f) {
             trackW = 20.0f;
@@ -58,18 +58,18 @@ public class SliderComponent extends Component {
         float ratio = range > 0 ? (setting.get() - setting.getMin()) / range : 0;
         float filledW = trackW * Math.max(0.0f, Math.min(1.0f, ratio));
 
-        // subtle dark background rail
-        RoundedUtils.drawRound(trackX, trackY, trackW, trackH, 1.25f, COLOR_TRACK_BG);
+        // dark background rail
+        RoundedUtils.drawRound(trackX, trackY, trackW, trackH, 1.5f, COLOR_TRACK_BG);
 
         // active filled rail
         if (filledW > 0.0f) {
-            RoundedUtils.drawRound(trackX, trackY, filledW, trackH, 1.25f, COLOR_TRACK_FILL);
+            RoundedUtils.drawRound(trackX, trackY, filledW, trackH, 1.5f, COLOR_TRACK_FILL);
         }
 
-        // smooth circular knob at slider thumb position
+        // circular thumb knob
         float thumbX = trackX + filledW;
         float thumbY = trackY + (trackH / 2.0f);
-        RenderUtils.drawCircle(thumbX, thumbY, 0, 360, 3.0f, 0.1f, true, COLOR_THUMB.getRGB());
+        RenderUtils.drawCircle(thumbX, thumbY, 0, 360, 3.5f, 0.1f, true, COLOR_THUMB.getRGB());
 
         // release drag state when left mouse button is unpressed
         if (!Mouse.isButtonDown(0)) {
@@ -109,10 +109,9 @@ public class SliderComponent extends Component {
     @Override
     public void mouseClicked(int mouseX, int mouseY, int mouseButton) {
         float valWidth = 24.0f;
-        float trackX = getX() + 80.0f;
-        float trackW = getWidth() - 80.0f - valWidth - 8.0f;
+        float trackX = getX() + 85.0f;
+        float trackW = getWidth() - 85.0f - valWidth - 8.0f;
 
-        // click anywhere along the slider track zone to start dragging
         if (mouseButton == 0 && MouseUtils.isHovered(trackX - 6.0f, getY(), trackW + 12.0f, getHeight(), mouseX, mouseY)) {
             dragging = true;
         }

@@ -3,27 +3,30 @@ package wtf.demise.gui.click;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.util.MathHelper;
-import org.lwjgl.opengl.GL11;
 import org.lwjglx.input.Keyboard;
-import org.lwjglx.input.Mouse;
 import wtf.demise.Demise;
 import wtf.demise.features.modules.ModuleCategory;
 import wtf.demise.gui.click.components.Category;
 import wtf.demise.gui.click.components.ModuleComponent;
 import wtf.demise.gui.click.components.SearchCategory;
 import wtf.demise.gui.click.components.config.ConfigCategoryComponent;
-import wtf.demise.gui.font.Fonts;
 import wtf.demise.utils.math.MathUtils;
 import wtf.demise.utils.render.MouseUtils;
 import wtf.demise.utils.render.RenderUtils;
 import wtf.demise.utils.render.RoundedUtils;
+import wtf.demise.gui.font.Fonts;
 
 import java.awt.*;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * main clickgui window: sidebar navigation, top action bar,
+ * draggable window, search mode, config manager and about dialog.
+ */
 public class PanelGui extends GuiScreen {
+
+    // ---- static state shared with components ----
     private final List<Category> categories = new ArrayList<>();
     public static Category selectedCategory;
     public static Category previousCategory;
@@ -32,38 +35,51 @@ public class PanelGui extends GuiScreen {
     public static ModuleComponent focusedModule = null;
     public static boolean bindingListening = false;
     public static boolean dragging;
-    private float dragX, dragY;
     public static float posX = -1, posY = -1;
-    public static float width = 650.0f, height = 420.0f;
-    private final ConfigCategoryComponent configCategoryComponent;
-    private final SearchCategory searchCategoryComponent;
+    public static float width = 560.0f, height = 360.0f;
     public static float interpolatedScale;
-    private boolean closing;
-    private boolean initializedPosition;
-
-    // floating about modal dialog toggle
     public static boolean showAboutModal = false;
 
-    // fdp modern dark palette specification
-    private static final Color BG_WINDOW = new Color(11, 14, 20, 255);
-    private static final Color BG_SIDEBAR = new Color(9, 12, 17, 255);
-    private static final Color BORDER_WINDOW = new Color(255, 255, 255, 12);
+    // ---- layout constants (single source of truth for draw + click) ----
+    private static final float SIDEBAR_WIDTH = 118.0f;
+    private static final float TOP_BAR_HEIGHT = 30.0f;
+    private static final float NAV_START = 42.0f;
+    private static final float NAV_ITEM_HEIGHT = 24.0f;
+    private static final float NAV_STEP = 28.0f;
+    private static final float PILL_HEIGHT = 20.0f;
+
+    // ---- client info shown in the about dialog ----
+    private static final String CLIENT_NAME = "DEMISE";
+    private static final String CLIENT_VERSION = "DEV 2.1.0";
+    private static final String CLIENT_BUILD = "#0001";
+    private static final String CLIENT_BUILD_DATE = "2026-10-31";
+
+    // ---- palette ----
+    private static final Color BG_WINDOW = new Color(10, 13, 19, 255);
+    private static final Color BG_SIDEBAR = new Color(7, 10, 15, 255);
+    private static final Color BORDER_WINDOW = new Color(38, 48, 68, 255);
     private static final Color ACCENT_BLUE = new Color(0, 132, 255, 255);
     private static final Color ACCENT_CYAN = new Color(33, 150, 243, 255);
-    private static final Color PILL_ACTIVE_BG = new Color(16, 42, 77, 240);
-    private static final Color PILL_ACTIVE_BORDER = new Color(0, 132, 255, 180);
-    private static final Color TEXT_MUTED = new Color(130, 140, 155, 255);
-    private static final Color TEXT_SECTION = new Color(85, 95, 110, 255);
+    private static final Color PILL_ACTIVE_BG = new Color(0, 132, 255, 45);
+    private static final Color PILL_ACTIVE_BORDER = new Color(0, 150, 255, 220);
+    private static final Color BUTTON_BG = new Color(18, 24, 34, 250);
+    private static final Color BUTTON_BG_HOVER = new Color(24, 32, 46, 250);
+    private static final Color BUTTON_BORDER = new Color(42, 54, 76, 255);
+    private static final Color BUTTON_BORDER_HOVER = new Color(0, 132, 255, 180);
+    private static final Color TEXT_PRIMARY = new Color(245, 248, 255, 255);
+    private static final Color TEXT_BODY = new Color(215, 225, 240, 255);
+    private static final Color TEXT_MUTED = new Color(155, 168, 188, 255);
+    private static final Color TEXT_FAINT = new Color(110, 122, 142, 255);
+    private static final Color STATUS_GREEN = new Color(76, 217, 100, 255);
+    private static final Color DIVIDER = new Color(255, 255, 255, 10);
 
-    // sidebar navigation item structure linking labels into internal categories
+    // ---- sidebar navigation ----
     private static class NavItem {
-        final String section;
         final String name;
         final ModuleCategory category;
         final boolean isConfig;
 
-        NavItem(String section, String name, ModuleCategory category, boolean isConfig) {
-            this.section = section;
+        NavItem(String name, ModuleCategory category, boolean isConfig) {
             this.name = name;
             this.category = category;
             this.isConfig = isConfig;
@@ -71,6 +87,12 @@ public class PanelGui extends GuiScreen {
     }
 
     private final List<NavItem> navItems = new ArrayList<>();
+    private final ConfigCategoryComponent configCategoryComponent;
+    private final SearchCategory searchCategoryComponent;
+    private float dragX, dragY;
+    private boolean closing;
+    private boolean initializedPosition;
+    private long lastSaveTime;
 
     public PanelGui() {
         for (ModuleCategory category : ModuleCategory.values()) {
@@ -80,18 +102,15 @@ public class PanelGui extends GuiScreen {
         configCategoryComponent = new ConfigCategoryComponent(0, 0);
         searchCategoryComponent = new SearchCategory();
 
-        // build categorized sidebar navigation hierarchy matching fdp ui
-        navItems.add(new NavItem("Combat", "Rage", ModuleCategory.Combat, false));
-        navItems.add(new NavItem("Combat", "Legit", ModuleCategory.Legit, false));
-        navItems.add(new NavItem("Movement", "Main", ModuleCategory.Movement, false));
-        navItems.add(new NavItem("Movement", "Extras", ModuleCategory.Misc, false));
-        navItems.add(new NavItem("Player", "Counterattack", ModuleCategory.Player, false));
-        navItems.add(new NavItem("Player", "Assist", ModuleCategory.Exploit, false));
-        navItems.add(new NavItem("Render", "Self", ModuleCategory.Visual, false));
-        navItems.add(new NavItem("Config", "Configs", null, true));
+        navItems.add(new NavItem("Combat", ModuleCategory.Combat, false));
+        navItems.add(new NavItem("Movement", ModuleCategory.Movement, false));
+        navItems.add(new NavItem("Player", ModuleCategory.Player, false));
+        navItems.add(new NavItem("Render", ModuleCategory.Visual, false));
+        navItems.add(new NavItem("Config", null, true));
 
         if (selectedCategory == null && !categories.isEmpty()) {
             selectedCategory = categories.get(0);
+            selectedCategory.setSelected(true);
         }
     }
 
@@ -102,6 +121,19 @@ public class PanelGui extends GuiScreen {
             }
         }
         return categories.get(0);
+    }
+
+    // ---- button rects: shared by drawscreen and mouseclicked so hitboxes never drift ----
+    private float[] saveButtonRect() {
+        return new float[]{posX + SIDEBAR_WIDTH + 13.0f, posY + (TOP_BAR_HEIGHT - PILL_HEIGHT) / 2.0f, 58.0f, PILL_HEIGHT};
+    }
+
+    private float[] searchButtonRect() {
+        return new float[]{posX + width - 13.0f - 54.0f, posY + (TOP_BAR_HEIGHT - PILL_HEIGHT) / 2.0f, 54.0f, PILL_HEIGHT};
+    }
+
+    private float[] aboutButtonRect() {
+        return new float[]{posX + width - 13.0f - 54.0f - 8.0f - 46.0f, posY + (TOP_BAR_HEIGHT - PILL_HEIGHT) / 2.0f, 46.0f, PILL_HEIGHT};
     }
 
     @Override
@@ -115,18 +147,22 @@ public class PanelGui extends GuiScreen {
         float screenW = sr.getScaledWidth();
         float screenH = sr.getScaledHeight();
 
-        width = Math.max(500.0f, Math.min(760.0f, screenW - 60.0f));
-        height = Math.max(340.0f, Math.min(520.0f, screenH - 60.0f));
+        // auto-fit inside the active window resolution
+        width = Math.max(340.0f, Math.min(560.0f, screenW - 20.0f));
+        height = Math.max(220.0f, Math.min(370.0f, screenH - 20.0f));
 
         if (!initializedPosition || posX < 0 || posY < 0) {
             posX = (screenW - width) / 2.0f;
             posY = (screenH - height) / 2.0f;
             initializedPosition = true;
         } else {
-            posX = MathHelper.clamp_float(posX, 10.0f, Math.max(10.0f, screenW - width - 10.0f));
-            posY = MathHelper.clamp_float(posY, 10.0f, Math.max(10.0f, screenH - height - 10.0f));
+            posX = MathHelper.clamp_float(posX, 5.0f, Math.max(5.0f, screenW - width - 5.0f));
+            posY = MathHelper.clamp_float(posY, 5.0f, Math.max(5.0f, screenH - height - 5.0f));
         }
 
+        if (selectedCategory != null) {
+            selectedCategory.setSelected(true);
+        }
         if (selectedConfigCategory != null) {
             selectedConfigCategory.initGui();
         }
@@ -148,200 +184,200 @@ public class PanelGui extends GuiScreen {
         float screenW = sr.getScaledWidth();
         float screenH = sr.getScaledHeight();
 
+        width = Math.max(340.0f, Math.min(560.0f, screenW - 20.0f));
+        height = Math.max(220.0f, Math.min(370.0f, screenH - 20.0f));
+
         if (dragging) {
-            posX = MathHelper.clamp_float(mouseX - dragX, 10.0f, Math.max(10.0f, screenW - width - 10.0f));
-            posY = MathHelper.clamp_float(mouseY - dragY, 10.0f, Math.max(10.0f, screenH - height - 10.0f));
+            posX = MathHelper.clamp_float(mouseX - dragX, 5.0f, Math.max(5.0f, screenW - width - 5.0f));
+            posY = MathHelper.clamp_float(mouseY - dragY, 5.0f, Math.max(5.0f, screenH - height - 5.0f));
         }
 
         RenderUtils.scaleStart(sr.getScaledWidth() / 2.0f, sr.getScaledHeight() / 2.0f, interpolatedScale);
 
-        // draw background drop shadow for window depth
+        // ---- window frame ----
         RoundedUtils.drawRound(posX - 3.0f, posY - 3.0f, width + 6.0f, height + 6.0f, 10.0f, new Color(0, 0, 0, 90));
+        RoundedUtils.drawRound(posX, posY, width, height, 10.0f, BG_WINDOW);
 
-        // draw main window body
-        RoundedUtils.drawRoundOutline(posX, posY, width, height, 10.0f, 0.5f, BG_WINDOW, BORDER_WINDOW);
+        // ---- sidebar ----
+        RoundedUtils.drawRound(posX, posY, SIDEBAR_WIDTH, height, 10.0f, BG_SIDEBAR);
+        // square off the sidebar's right edge so it meets the divider cleanly
+        RenderUtils.drawRect(posX + SIDEBAR_WIDTH - 10.0f, posY, 10.0f, height, BG_SIDEBAR.getRGB());
+        RenderUtils.drawRect(posX + SIDEBAR_WIDTH, posY, 1.0f, height, DIVIDER.getRGB());
 
-        // draw left sidebar background
-        float sidebarW = 140.0f;
-        RoundedUtils.drawRound(posX, posY, sidebarW, height, 10.0f, BG_SIDEBAR);
-        // vertical divider line separating sidebar from main card canvas
-        RenderUtils.drawRect(posX + sidebarW, posY, 1.0f, height, new Color(255, 255, 255, 8).getRGB());
+        // re-stroke the border on top so the sidebar doesn't swallow the frame
+        RoundedUtils.drawRoundOutline(posX, posY, width, height, 10.0f, 1.0f, new Color(0, 0, 0, 0), BORDER_WINDOW);
 
-        // brand wordmark at top left
-        Fonts.interBold.get(15.0f).drawString("DEMISE", posX + 16.0f, posY + 16.0f, Color.white.getRGB());
+        // brand wordmark matching client watermark styling
+        Fonts.urbanist.get(22.0f).drawString(CLIENT_NAME, posX + 14.0f, posY + 11.0f, Color.white.getRGB());
 
-        // render categorized sidebar items
-        float currentItemY = posY + 42.0f;
-        String lastSection = "";
-
+        // ---- navigation ----
+        float itemY = posY + NAV_START;
         for (NavItem item : navItems) {
-            // draw section header when switching categories
-            if (!item.section.equals(lastSection)) {
-                currentItemY += 5.0f;
-                Fonts.interRegular.get(8.5f).drawString(item.section, posX + 16.0f, currentItemY, TEXT_SECTION.getRGB());
-                currentItemY += 13.0f;
-                lastSection = item.section;
-            }
+            boolean selected = item.isConfig
+                    ? selectedConfigCategory != null
+                    : selectedConfigCategory == null
+                    && selectedSearchCategory == null
+                    && selectedCategory != null
+                    && selectedCategory.getCategory() == item.category;
 
-            boolean isSelected;
-            if (item.isConfig) {
-                isSelected = (selectedConfigCategory != null);
-            } else {
-                isSelected = (selectedConfigCategory == null && selectedSearchCategory == null && selectedCategory != null && selectedCategory.getCategory() == item.category);
-            }
+            float itemX = posX + 8.0f;
+            float itemW = SIDEBAR_WIDTH - 16.0f;
+            boolean hovered = MouseUtils.isHovered(itemX, itemY, itemW, NAV_ITEM_HEIGHT, mouseX, mouseY);
 
-            float itemX = posX + 10.0f;
-            float itemW = sidebarW - 20.0f;
-            float itemH = 20.0f;
-            boolean hovered = MouseUtils.isHovered(itemX, currentItemY, itemW, itemH, mouseX, mouseY);
-
-            if (isSelected) {
-                // active navigation pill with rounded border
-                RoundedUtils.drawRoundOutline(itemX, currentItemY, itemW, itemH, 4.0f, 0.5f, PILL_ACTIVE_BG, PILL_ACTIVE_BORDER);
-                Fonts.interMedium.get(10.0f).drawString(item.name, itemX + 10.0f, currentItemY + 5.0f, Color.white.getRGB());
+            if (selected) {
+                RoundedUtils.drawRoundOutline(itemX, itemY, itemW, NAV_ITEM_HEIGHT, 5.0f, 0.8f, PILL_ACTIVE_BG, PILL_ACTIVE_BORDER);
+                Fonts.urbanist.get(16.0f).drawString(item.name, itemX + 10.0f, itemY + (NAV_ITEM_HEIGHT - 16.0f) / 2.0f + 1.0f, Color.white.getRGB());
             } else {
                 if (hovered) {
-                    RoundedUtils.drawRound(itemX, currentItemY, itemW, itemH, 4.0f, new Color(255, 255, 255, 8));
+                    RoundedUtils.drawRound(itemX, itemY, itemW, NAV_ITEM_HEIGHT, 5.0f, new Color(255, 255, 255, 12));
                 }
-                int textAlpha = hovered ? 240 : 160;
-                Fonts.interRegular.get(10.0f).drawString(item.name, itemX + 10.0f, currentItemY + 5.0f, new Color(210, 220, 235, textAlpha).getRGB());
+                Fonts.urbanist.get(16.0f).drawString(item.name, itemX + 10.0f, itemY + (NAV_ITEM_HEIGHT - 16.0f) / 2.0f + 1.0f,
+                        (hovered ? Color.white : TEXT_BODY).getRGB());
             }
 
-            currentItemY += 22.0f;
+            itemY += NAV_STEP;
         }
 
-        // bottom profile card at base of sidebar
+        // ---- profile card ----
         float profileY = posY + height - 38.0f;
-        float avatarX = posX + 14.0f;
-        float avatarY = profileY + 4.0f;
+        float avatarX = posX + 12.0f;
+        float avatarY = profileY + 2.0f;
 
-        // circular player avatar
-        RenderUtils.drawCircle(avatarX + 10.0f, avatarY + 10.0f, 0, 360, 10.0f, 0.1f, true, new Color(25, 35, 50, 255).getRGB());
-        Fonts.interBold.get(9.0f).drawCenteredString("D", avatarX + 10.0f, avatarY + 6.5f, ACCENT_CYAN.getRGB());
+        RenderUtils.drawCircle(avatarX + 9.0f, avatarY + 9.0f, 0, 360, 9.0f, 0.1f, true, new Color(25, 35, 50, 255).getRGB());
+        Fonts.urbanist.get(14.0f).drawCenteredString("D", avatarX + 9.0f, avatarY + 3.5f, ACCENT_CYAN.getRGB());
 
-        String username = mc.getSession() != null ? mc.getSession().getUsername() : "Hesophere";
-        Fonts.interMedium.get(9.5f).drawString(username, avatarX + 26.0f, avatarY + 2.0f, Color.white.getRGB());
-        Fonts.interRegular.get(8.0f).drawString("Till: Active", avatarX + 26.0f, avatarY + 12.0f, ACCENT_CYAN.getRGB());
+        String username = mc.getSession() != null ? mc.getSession().getUsername() : "Player";
+        Fonts.urbanist.get(15.0f).drawString(username, avatarX + 24.0f, avatarY + 1.0f, Color.white.getRGB());
+        RenderUtils.drawCircle(avatarX + 25.5f, avatarY + 16.0f, 0, 360, 2.0f, 0.1f, true, STATUS_GREEN.getRGB());
+        Fonts.urbanist.get(13.0f).drawString("Online", avatarX + 31.0f, avatarY + 12.0f, TEXT_MUTED.getRGB());
 
-        // ---- top bar of main content area ----
-        float topBarY = posY + 12.0f;
-        float saveBtnX = posX + sidebarW + 16.0f;
-        float saveBtnW = 62.0f;
-        float saveBtnH = 20.0f;
-        boolean saveHover = MouseUtils.isHovered(saveBtnX, topBarY, saveBtnW, saveBtnH, mouseX, mouseY);
-
-        // rounded save configuration button
-        RoundedUtils.drawRoundOutline(saveBtnX, topBarY, saveBtnW, saveBtnH, 4.0f, 0.5f, new Color(15, 20, 28, 240), saveHover ? new Color(0, 132, 255, 140) : new Color(255, 255, 255, 14));
-        Fonts.interMedium.get(9.5f).drawString("Save", saveBtnX + 18.0f, topBarY + 5.0f, Color.white.getRGB());
-
-        // right action icons (settings / search)
-        float gearX = posX + width - 48.0f;
-        float searchIconX = posX + width - 26.0f;
-        boolean gearHover = MouseUtils.isHovered(gearX - 4.0f, topBarY - 2.0f, 20.0f, 20.0f, mouseX, mouseY);
-        boolean searchHover = MouseUtils.isHovered(searchIconX - 4.0f, topBarY - 2.0f, 20.0f, 20.0f, mouseX, mouseY);
-
-        // gear icon for toggling about dialog
-        Fonts.interMedium.get(12.0f).drawString("*", gearX, topBarY + 3.0f, (gearHover || showAboutModal) ? ACCENT_CYAN.getRGB() : TEXT_MUTED.getRGB());
-
-        // search icon
-        Fonts.interMedium.get(10.5f).drawString("Q", searchIconX, topBarY + 4.5f, (searchHover || selectedSearchCategory != null) ? ACCENT_CYAN.getRGB() : TEXT_MUTED.getRGB());
-
-        // content viewport rendering
+        // ---- content area (single scissored draw pass with mouse coords) ----
         if (selectedSearchCategory != null) {
-            searchCategoryComponent.render(false);
-            searchCategoryComponent.drawScreen(mouseX, mouseY);
+            selectedSearchCategory.drawScreen(mouseX, mouseY);
         } else if (selectedConfigCategory != null) {
-            configCategoryComponent.render(false);
-            configCategoryComponent.drawScreen(mouseX, mouseY);
+            selectedConfigCategory.drawScreen(mouseX, mouseY);
         } else if (selectedCategory != null) {
-            selectedCategory.render(false);
+            selectedCategory.setSelected(true);
             selectedCategory.drawScreen(mouseX, mouseY);
         }
 
-        // draw floating about modal dialog if active
+        // ---- top bar strip ----
+        float stripX = posX + SIDEBAR_WIDTH + 1.0f;
+        float stripW = width - SIDEBAR_WIDTH - 2.0f;
+        RoundedUtils.drawRound(stripX, posY + 1.0f, stripW, TOP_BAR_HEIGHT, 4.0f, BG_WINDOW);
+        RenderUtils.drawRect(stripX, posY + TOP_BAR_HEIGHT - 4.0f, stripW, 4.0f, BG_WINDOW.getRGB());
+
+        // save button with brief "saved" feedback
+        float[] save = saveButtonRect();
+        boolean saveHover = MouseUtils.isHovered(save[0], save[1], save[2], save[3], mouseX, mouseY);
+        boolean justSaved = System.currentTimeMillis() - lastSaveTime < 1200L;
+        drawPill(justSaved ? "Saved" : "Save", save[0], save[1], save[2], save[3],
+                saveHover || justSaved, justSaved ? STATUS_GREEN : null);
+
+        // about + search buttons
+        float[] about = aboutButtonRect();
+        drawPill("About", about[0], about[1], about[2], about[3], showAboutModal, showAboutModal ? ACCENT_CYAN : null);
+
+        float[] search = searchButtonRect();
+        drawPill("Search", search[0], search[1], search[2], search[3],
+                selectedSearchCategory != null, selectedSearchCategory != null ? ACCENT_CYAN : null);
+
+        // ---- about dialog ----
         if (showAboutModal) {
-            drawAboutModal(mouseX, mouseY);
+            drawAboutModal();
         }
 
         RenderUtils.scaleEnd();
     }
 
-    private void drawAboutModal(int mouseX, int mouseY) {
-        float modalW = 190.0f;
-        float modalH = 190.0f;
-        float modalX = posX + width + 10.0f;
-        float modalY = posY;
+    /**
+     * text pill button: rounded outline + horizontally centered label.
+     * pass a non-null accent to force the label color (active state).
+     */
+    private void drawPill(String label, float x, float y, float w, float h, boolean hovered, Color accent) {
+        Color fill = accent != null ? PILL_ACTIVE_BG : (hovered ? BUTTON_BG_HOVER : BUTTON_BG);
+        Color border = accent != null ? PILL_ACTIVE_BORDER : (hovered ? BUTTON_BORDER_HOVER : BUTTON_BORDER);
+        RoundedUtils.drawRoundOutline(x, y, w, h, 5.0f, 0.8f, fill, border);
+        Color textColor = accent != null ? accent : (hovered ? Color.white : TEXT_BODY);
+        Fonts.urbanist.get(14.0f).drawCenteredString(label, x + w / 2.0f, y + (h - 14.0f) / 2.0f + 1.0f, textColor.getRGB());
+    }
 
-        ScaledResolution sr = new ScaledResolution(mc);
-        if (modalX + modalW > sr.getScaledWidth()) {
-            modalX = posX + width - modalW - 14.0f;
-            modalY = posY + 36.0f;
+    private void drawAboutModal() {
+        // dim the window behind the dialog
+        RoundedUtils.drawRound(posX, posY, width, height, 10.0f, new Color(0, 0, 0, 150));
+
+        float modalW = 200.0f;
+        float modalH = 170.0f;
+        float modalX = posX + (width - modalW) / 2.0f;
+        float modalY = posY + (height - modalH) / 2.0f;
+
+        RoundedUtils.drawRound(modalX - 2.0f, modalY - 2.0f, modalW + 4.0f, modalH + 4.0f, 10.0f, new Color(0, 0, 0, 100));
+        RoundedUtils.drawRoundOutline(modalX, modalY, modalW, modalH, 8.0f, 0.8f, new Color(13, 17, 24, 255), BORDER_WINDOW);
+
+        Fonts.urbanist.get(13.0f).drawString("ABOUT", modalX + 16.0f, modalY + 14.0f, TEXT_MUTED.getRGB());
+        Fonts.urbanist.get(22.0f).drawCenteredString(CLIENT_NAME, modalX + modalW / 2.0f, modalY + 28.0f, Color.white.getRGB());
+
+        RenderUtils.drawRect(modalX + 16.0f, modalY + 54.0f, modalW - 32.0f, 1.0f, DIVIDER.getRGB());
+
+        String username = mc.getSession() != null ? mc.getSession().getUsername() : "Player";
+        String[][] rows = {
+                {"Version", CLIENT_VERSION},
+                {"Build", CLIENT_BUILD},
+                {"Date", CLIENT_BUILD_DATE},
+                {"User", username}
+        };
+
+        float rowY = modalY + 64.0f;
+        for (String[] row : rows) {
+            Fonts.urbanist.get(14.0f).drawString(row[0], modalX + 16.0f, rowY, TEXT_MUTED.getRGB());
+            Fonts.urbanist.get(14.0f).drawString(row[1], modalX + 88.0f, rowY, TEXT_PRIMARY.getRGB());
+            rowY += 15.0f;
         }
 
-        // modal background with outline
-        RoundedUtils.drawRound(modalX - 2.0f, modalY - 2.0f, modalW + 4.0f, modalH + 4.0f, 8.0f, new Color(0, 0, 0, 100));
-        RoundedUtils.drawRoundOutline(modalX, modalY, modalW, modalH, 8.0f, 0.5f, new Color(10, 14, 20, 255), new Color(255, 255, 255, 14));
-
-        // modal header
-        Fonts.interRegular.get(9.0f).drawString("* About DEMISE", modalX + 12.0f, modalY + 12.0f, TEXT_MUTED.getRGB());
-
-        // bold title wordmark
-        Fonts.interBold.get(16.0f).drawCenteredString("DEMISECLIENT", modalX + (modalW / 2.0f), modalY + 34.0f, Color.white.getRGB());
-
-        // metadata key value list
-        float textY = modalY + 68.0f;
-        float labelX = modalX + 14.0f;
-
-        Fonts.interRegular.get(9.0f).drawString("Version:", labelX, textY, TEXT_MUTED.getRGB());
-        Fonts.interMedium.get(9.0f).drawString("DEV v2.1.0", labelX + 64.0f, textY, ACCENT_CYAN.getRGB());
-        textY += 13.0f;
-
-        Fonts.interRegular.get(9.0f).drawString("Build Type:", labelX, textY, TEXT_MUTED.getRGB());
-        Fonts.interMedium.get(9.0f).drawString("#0001 - Dev", labelX + 64.0f, textY, ACCENT_CYAN.getRGB());
-        textY += 13.0f;
-
-        Fonts.interRegular.get(9.0f).drawString("Build Date:", labelX, textY, TEXT_MUTED.getRGB());
-        Fonts.interMedium.get(9.0f).drawString("2026-10-31", labelX + 64.0f, textY, ACCENT_CYAN.getRGB());
-        textY += 13.0f;
-
-        String username = mc.getSession() != null ? mc.getSession().getUsername() : "Hesophere";
-        Fonts.interRegular.get(9.0f).drawString("Registered to:", labelX, textY, TEXT_MUTED.getRGB());
-        Fonts.interMedium.get(9.0f).drawString(username, labelX + 64.0f, textY, ACCENT_CYAN.getRGB());
-        textY += 17.0f;
-
-        Fonts.interRegular.get(8.5f).drawCenteredString("demiseclient @ 2026", modalX + (modalW / 2.0f), textY, new Color(90, 100, 115).getRGB());
-        textY += 18.0f;
-
-        // style selector with color indicator circles
-        Fonts.interRegular.get(9.0f).drawString("Style", labelX, textY + 2.0f, TEXT_MUTED.getRGB());
-        RenderUtils.drawCircle(labelX + 44.0f, textY + 6.0f, 0, 360, 4.5f, 0.1f, true, Color.white.getRGB());
-        RenderUtils.drawCircle(labelX + 62.0f, textY + 6.0f, 0, 360, 4.5f, 0.1f, false, ACCENT_BLUE.getRGB());
+        Fonts.urbanist.get(12.0f).drawCenteredString("\u00A9 2026 Demise", modalX + modalW / 2.0f, modalY + modalH - 16.0f, TEXT_FAINT.getRGB());
     }
 
     @Override
     public void mouseClicked(int mouseX, int mouseY, int mouseButton) {
-        float topBarH = 34.0f;
+        if (mouseButton != 0) {
+            forwardClick(mouseX, mouseY, mouseButton);
+            return;
+        }
 
-        // check save profile button
-        float sidebarW = 140.0f;
-        float saveBtnX = posX + sidebarW + 16.0f;
-        float saveBtnW = 62.0f;
-        float saveBtnH = 20.0f;
-        if (mouseButton == 0 && MouseUtils.isHovered(saveBtnX, posY + 12.0f, saveBtnW, saveBtnH, mouseX, mouseY)) {
+        // while the about dialog is open it captures all clicks
+        if (showAboutModal) {
+            float[] about = aboutButtonRect();
+            if (MouseUtils.isHovered(about[0], about[1], about[2], about[3], mouseX, mouseY)) {
+                showAboutModal = false;
+                return;
+            }
+            float modalW = 200.0f, modalH = 170.0f;
+            float modalX = posX + (width - modalW) / 2.0f;
+            float modalY = posY + (height - modalH) / 2.0f;
+            if (!MouseUtils.isHovered(modalX, modalY, modalW, modalH, mouseX, mouseY)) {
+                showAboutModal = false;
+            }
+            return;
+        }
+
+        // save button
+        float[] save = saveButtonRect();
+        if (MouseUtils.isHovered(save[0], save[1], save[2], save[3], mouseX, mouseY)) {
             Demise.INSTANCE.getConfigManager().saveConfigs();
+            lastSaveTime = System.currentTimeMillis();
             return;
         }
 
-        // check gear icon button
-        float gearX = posX + width - 48.0f;
-        if (mouseButton == 0 && MouseUtils.isHovered(gearX - 4.0f, posY + 10.0f, 20.0f, 20.0f, mouseX, mouseY)) {
-            showAboutModal = !showAboutModal;
+        // about button
+        float[] about = aboutButtonRect();
+        if (MouseUtils.isHovered(about[0], about[1], about[2], about[3], mouseX, mouseY)) {
+            showAboutModal = true;
             return;
         }
 
-        // check search icon button
-        float searchIconX = posX + width - 26.0f;
-        if (mouseButton == 0 && MouseUtils.isHovered(searchIconX - 4.0f, posY + 10.0f, 20.0f, 20.0f, mouseX, mouseY)) {
+        // search button
+        float[] search = searchButtonRect();
+        if (MouseUtils.isHovered(search[0], search[1], search[2], search[3], mouseX, mouseY)) {
             if (selectedSearchCategory == null) {
                 previousCategory = selectedCategory;
                 searchCategoryComponent.initCategory();
@@ -353,34 +389,26 @@ public class PanelGui extends GuiScreen {
                 selectedSearchCategory = null;
                 searchCategoryComponent.setInputting(false);
                 selectedCategory = (previousCategory != null ? previousCategory : categories.get(0));
+                selectedCategory.setSelected(true);
             }
             return;
         }
 
-        // window dragging from header region
-        if (mouseButton == 0 && MouseUtils.isHovered(posX + sidebarW, posY, width - sidebarW, topBarH, mouseX, mouseY)) {
+        // drag from the top bar
+        if (MouseUtils.isHovered(posX + SIDEBAR_WIDTH, posY, width - SIDEBAR_WIDTH, TOP_BAR_HEIGHT, mouseX, mouseY)) {
             dragging = true;
             dragX = mouseX - posX;
             dragY = mouseY - posY;
             return;
         }
 
-        // sidebar clicks
-        if (MouseUtils.isHovered(posX, posY, sidebarW, height, mouseX, mouseY) && mouseButton == 0) {
-            float currentItemY = posY + 42.0f;
-            String lastSection = "";
-
+        // sidebar navigation
+        if (MouseUtils.isHovered(posX, posY, SIDEBAR_WIDTH, height, mouseX, mouseY)) {
+            float itemY = posY + NAV_START;
             for (NavItem item : navItems) {
-                if (!item.section.equals(lastSection)) {
-                    currentItemY += 18.0f;
-                    lastSection = item.section;
-                }
-
-                float itemX = posX + 10.0f;
-                float itemW = sidebarW - 20.0f;
-                float itemH = 20.0f;
-
-                if (MouseUtils.isHovered(itemX, currentItemY, itemW, itemH, mouseX, mouseY)) {
+                float itemX = posX + 8.0f;
+                float itemW = SIDEBAR_WIDTH - 16.0f;
+                if (MouseUtils.isHovered(itemX, itemY, itemW, NAV_ITEM_HEIGHT, mouseX, mouseY)) {
                     if (item.isConfig) {
                         if (selectedConfigCategory == null) {
                             configCategoryComponent.initCategory();
@@ -388,33 +416,32 @@ public class PanelGui extends GuiScreen {
                         selectedConfigCategory = configCategoryComponent;
                         selectedCategory = null;
                         selectedSearchCategory = null;
-                        return;
                     } else {
-                        Category targetCat = getCategoryByModuleCategory(item.category);
-                        if (selectedCategory != targetCat) {
-                            targetCat.initCategory();
+                        Category target = getCategoryByModuleCategory(item.category);
+                        if (selectedCategory != target) {
+                            target.initCategory();
                         }
-                        selectedCategory = targetCat;
+                        selectedCategory = target;
+                        selectedCategory.setSelected(true);
                         selectedConfigCategory = null;
                         selectedSearchCategory = null;
-                        return;
                     }
+                    return;
                 }
-                currentItemY += 22.0f;
+                itemY += NAV_STEP;
             }
             return;
         }
 
-        // forward to active content category
+        forwardClick(mouseX, mouseY, mouseButton);
+    }
+
+    private void forwardClick(int mouseX, int mouseY, int mouseButton) {
         if (selectedSearchCategory != null) {
             selectedSearchCategory.mouseClicked(mouseX, mouseY, mouseButton);
-            return;
-        }
-        if (selectedConfigCategory != null) {
+        } else if (selectedConfigCategory != null) {
             selectedConfigCategory.mouseClicked(mouseX, mouseY, mouseButton);
-            return;
-        }
-        if (selectedCategory != null) {
+        } else if (selectedCategory != null) {
             selectedCategory.mouseClicked(mouseX, mouseY, mouseButton);
         }
     }
@@ -447,12 +474,12 @@ public class PanelGui extends GuiScreen {
                 if (!searchCategoryComponent.getFilter().isEmpty()) {
                     searchCategoryComponent.clearFilter();
                     return;
-                } else {
-                    selectedSearchCategory = null;
-                    searchCategoryComponent.setInputting(false);
-                    selectedCategory = (previousCategory != null ? previousCategory : categories.get(0));
-                    return;
                 }
+                selectedSearchCategory = null;
+                searchCategoryComponent.setInputting(false);
+                selectedCategory = (previousCategory != null ? previousCategory : categories.get(0));
+                selectedCategory.setSelected(true);
+                return;
             }
             closing = true;
             return;
@@ -471,11 +498,6 @@ public class PanelGui extends GuiScreen {
         if (selectedCategory != null) {
             selectedCategory.keyTyped(typedChar, keyCode);
         }
-    }
-
-    @Override
-    public void handleMouseInput() throws IOException {
-        super.handleMouseInput();
     }
 
     @Override

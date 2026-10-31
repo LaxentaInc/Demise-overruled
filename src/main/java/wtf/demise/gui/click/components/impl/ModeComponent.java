@@ -12,42 +12,42 @@ import java.awt.*;
 public class ModeComponent extends Component {
     private final ModeValue setting;
 
-    // modern dark input box palette matching reference gui
-    private static final Color COLOR_TEXT_LABEL = new Color(175, 185, 200, 255);
-    private static final Color COLOR_TEXT_ACTIVE = new Color(245, 248, 255, 255);
+    // modern high contrast input box palette matching reference gui
+    private static final Color COLOR_TEXT_LABEL = new Color(245, 248, 255, 255);
+    private static final Color COLOR_TEXT_ACTIVE = new Color(96, 165, 250, 255);
     private static final Color COLOR_BOX_BG = new Color(13, 17, 24, 255);
-    private static final Color COLOR_BOX_BORDER = new Color(255, 255, 255, 14);
-    private static final Color COLOR_BOX_BORDER_HOVER = new Color(0, 132, 255, 120);
+    private static final Color COLOR_BOX_BORDER = new Color(42, 54, 76, 255);
+    private static final Color COLOR_BOX_BORDER_HOVER = new Color(0, 132, 255, 180);
 
     public ModeComponent(ModeValue setting) {
         this.setting = setting;
-        // standard compact row height for card layout
-        setHeight(21.0f);
+        // generous row height providing clean alignment
+        setHeight(23.0f);
     }
 
     @Override
     public void drawScreen(int mouseX, int mouseY) {
-        // setting label on left side
-        Fonts.interRegular.get(9.5f).drawString(setting.getName(), getX() + 6.0f, getY() + 5.0f, COLOR_TEXT_LABEL.getRGB());
+        // setting label on left side in crisp urbanist typography
+        Fonts.urbanist.get(15.0f).drawString(setting.getName(), getX() + 6.0f, getY() + 5.0f, COLOR_TEXT_LABEL.getRGB());
 
         // mode combobox pill on right side
         String currentMode = setting.get();
-        float textW = Fonts.interMedium.get(9.0f).getStringWidth(currentMode);
-        float boxW = Math.max(54.0f, textW + 18.0f);
-        float boxH = 15.0f;
+        float textW = Fonts.urbanist.get(14.0f).getStringWidth(currentMode);
+        float boxW = Math.max(56.0f, textW + 18.0f);
+        float boxH = 17.0f;
         float boxX = getX() + getWidth() - boxW - 6.0f;
         float boxY = getY() + (getHeight() - boxH) / 2.0f;
 
         boolean hovered = MouseUtils.isHovered(boxX, boxY, boxW, boxH, mouseX, mouseY);
 
         // rounded container with subtle border
-        RoundedUtils.drawRoundOutline(boxX, boxY, boxW, boxH, 3.0f, 0.5f, COLOR_BOX_BG, hovered ? COLOR_BOX_BORDER_HOVER : COLOR_BOX_BORDER);
+        RoundedUtils.drawRoundOutline(boxX, boxY, boxW, boxH, 4.0f, 0.6f, COLOR_BOX_BG, hovered ? COLOR_BOX_BORDER_HOVER : COLOR_BOX_BORDER);
 
         // active mode text centered in box
-        Fonts.interMedium.get(9.0f).drawString(currentMode, boxX + 6.0f, boxY + 4.0f, COLOR_TEXT_ACTIVE.getRGB());
+        Fonts.urbanist.get(14.0f).drawString(currentMode, boxX + 6.0f, boxY + (boxH - 14.0f) / 2.0f + 1.0f, COLOR_TEXT_ACTIVE.getRGB());
 
         // downward chevron glyph on far right of the box
-        Fonts.interRegular.get(7.5f).drawString("v", boxX + boxW - 9.0f, boxY + 4.5f, new Color(130, 140, 155, 255).getRGB());
+        Fonts.urbanist.get(12.0f).drawString("v", boxX + boxW - 10.0f, boxY + (boxH - 12.0f) / 2.0f + 1.0f, new Color(148, 163, 184, 255).getRGB());
 
         super.drawScreen(mouseX, mouseY);
     }
@@ -55,9 +55,9 @@ public class ModeComponent extends Component {
     @Override
     public void mouseClicked(int mouseX, int mouseY, int mouseButton) {
         String currentMode = setting.get();
-        float textW = Fonts.interMedium.get(9.0f).getStringWidth(currentMode);
-        float boxW = Math.max(54.0f, textW + 18.0f);
-        float boxH = 15.0f;
+        float textW = Fonts.urbanist.get(14.0f).getStringWidth(currentMode);
+        float boxW = Math.max(56.0f, textW + 18.0f);
+        float boxH = 17.0f;
         float boxX = getX() + getWidth() - boxW - 6.0f;
         float boxY = getY() + (getHeight() - boxH) / 2.0f;
 
