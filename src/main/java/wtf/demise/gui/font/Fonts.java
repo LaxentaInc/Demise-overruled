@@ -18,7 +18,9 @@ public enum Fonts {
     // geometric outfit fonts used for thin headers, descriptions, and sleek micro-typography
     outfitThin("outfit/Outfit-Thin"),
     outfitRegular("outfit/Outfit-Regular"),
-    outfitMedium("outfit/Outfit-Medium");
+    outfitMedium("outfit/Outfit-Medium"),
+    // cursive calligraphy font for artistic branding, subtitles, and accents
+    bilbo("bilbo/bilboregular");
 
     private final String file;
     private final Float2ObjectMap<FontRenderer> fontMap = new Float2ObjectArrayMap<>();
