@@ -56,7 +56,7 @@ public class PanelGui extends GuiScreen {
     // cached avatar texture from widgets.svg
     private static ResourceLocation avatarTexture = null;
 
-    private static ResourceLocation getAvatarTexture() {
+    public static ResourceLocation getAvatarTexture() {
         if (avatarTexture != null) return avatarTexture;
         try {
             File file = new File("C:/Users/MY-PC/Documents/demise-534fadf93d0842db6ca75064f2025650e3c4a3b4/src/main/resources/assets/minecraft/demise/img/widgets.png");

@@ -10,7 +10,7 @@ import wtf.demise.Demise;
 import wtf.demise.utils.InstanceAccess;
 
 public class VideoBackground implements InstanceAccess {
-    private static final int TOTAL_FRAMES = 360;
+    private static final int TOTAL_FRAMES = 394;
     private static final double FPS = 24.0;
     private static final double FRAME_DURATION_MS = 1000.0 / FPS;
     private static final ResourceLocation[] FRAME_LOCATIONS = new ResourceLocation[TOTAL_FRAMES];

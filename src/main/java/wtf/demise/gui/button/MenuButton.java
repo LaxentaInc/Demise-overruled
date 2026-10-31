@@ -27,6 +27,14 @@ public class MenuButton implements Button, InstanceAccess {
     private float interpolatedHeight;
     public static boolean shader;
 
+    // dark glass palette constants matching client theme
+    private static final Color BTN_BG = new Color(13, 18, 28, 215);
+    private static final Color BTN_BG_HOVER = new Color(20, 30, 48, 240);
+    private static final Color BTN_BORDER = new Color(38, 50, 72, 170);
+    private static final Color BTN_BORDER_HOVER = new Color(56, 189, 248, 235);
+    private static final Color TEXT_IDLE = new Color(225, 235, 248, 235);
+    private static final Color TEXT_HOVER = new Color(255, 255, 255, 255);
+
     public MenuButton(String text) {
         this.text = text;
     }
@@ -65,7 +73,7 @@ public class MenuButton implements Button, InstanceAccess {
             }
             break;
             case "Custom": {
-                boolean hovered = MouseUtils.isHovered(interpolatedX, interpolatedY, interpolatedWidth, interpolatedHeight, mouseX, mouseY);
+                boolean hovered = MouseUtils.isHovered(x, y, width, height, mouseX, mouseY);
 
                 if (interpolatedX == 0 || interpolatedY == 0 || interpolatedWidth == 0 || interpolatedHeight == 0) {
                     interpolatedX = x;
@@ -76,24 +84,21 @@ public class MenuButton implements Button, InstanceAccess {
 
                 float interpolation = 0.25f;
 
-                if (hovered) {
-                    interpolatedX = MathUtils.interpolate(interpolatedX, x + 1.5f, interpolation);
-                    interpolatedY = MathUtils.interpolate(interpolatedY, y + 1.5f, interpolation);
-                    interpolatedWidth = MathUtils.interpolate(interpolatedWidth, width - 3, interpolation);
-                    interpolatedHeight = MathUtils.interpolate(interpolatedHeight, height - 3, interpolation);
-                } else {
-                    interpolatedX = MathUtils.interpolate(interpolatedX, x, interpolation);
-                    interpolatedY = MathUtils.interpolate(interpolatedY, y, interpolation);
-                    interpolatedWidth = MathUtils.interpolate(interpolatedWidth, width, interpolation);
-                    interpolatedHeight = MathUtils.interpolate(interpolatedHeight, height, interpolation);
-                }
+                // smooth animated lift on hover without shrinking button bounding box
+                interpolatedX = MathUtils.interpolate(interpolatedX, x, interpolation);
+                interpolatedY = MathUtils.interpolate(interpolatedY, hovered ? y - 1.0f : y, interpolation);
+                interpolatedWidth = MathUtils.interpolate(interpolatedWidth, width, interpolation);
+                interpolatedHeight = MathUtils.interpolate(interpolatedHeight, height, interpolation);
 
                 if (!shader) {
-                    Interface anInterface = Demise.INSTANCE.getModuleManager().getModule(Interface.class);
-                    RoundedUtils.drawRound(interpolatedX, interpolatedY, interpolatedWidth, interpolatedHeight, 7, new Color(anInterface.bgColor(), true));
-                    Fonts.interRegular.get(15).drawCenteredString(text, interpolatedX + interpolatedWidth / 2f, interpolatedY + Fonts.interRegular.get(15).getMiddleOfBox(interpolatedHeight) + 2, -1);
+                    Color bg = hovered ? BTN_BG_HOVER : BTN_BG;
+                    Color border = hovered ? BTN_BORDER_HOVER : BTN_BORDER;
+                    RoundedUtils.drawRoundOutline(interpolatedX, interpolatedY, interpolatedWidth, interpolatedHeight, radius, 1.0f, bg, border);
+
+                    float fontY = interpolatedY + (interpolatedHeight - Fonts.urbanist.get(15.0f).getHeight()) / 2.0f + 0.5f;
+                    Fonts.urbanist.get(15.0f).drawCenteredString(text, interpolatedX + interpolatedWidth / 2.0f, fontY, (hovered ? TEXT_HOVER : TEXT_IDLE).getRGB());
                 } else {
-                    RoundedUtils.drawShaderRound(interpolatedX, interpolatedY, interpolatedWidth, interpolatedHeight, 7, Color.black);
+                    RoundedUtils.drawShaderRound(interpolatedX, interpolatedY, interpolatedWidth, interpolatedHeight, radius, Color.black);
                 }
             }
         }

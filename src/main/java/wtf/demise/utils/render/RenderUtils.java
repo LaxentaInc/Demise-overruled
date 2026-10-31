@@ -69,6 +69,39 @@ public class RenderUtils implements InstanceAccess {
         GlStateManager.disableBlend();
     }
 
+    public static void drawGradientVertical(float x, float y, float width, float height, int startColor, int endColor) {
+        float fStartA = (float) (startColor >> 24 & 255) / 255.0F;
+        float fStartR = (float) (startColor >> 16 & 255) / 255.0F;
+        float fStartG = (float) (startColor >> 8 & 255) / 255.0F;
+        float fStartB = (float) (startColor & 255) / 255.0F;
+
+        float fEndA = (float) (endColor >> 24 & 255) / 255.0F;
+        float fEndR = (float) (endColor >> 16 & 255) / 255.0F;
+        float fEndG = (float) (endColor >> 8 & 255) / 255.0F;
+        float fEndB = (float) (endColor & 255) / 255.0F;
+
+        Tessellator tessellator = Tessellator.getInstance();
+        WorldRenderer worldrenderer = tessellator.getWorldRenderer();
+        GlStateManager.enableBlend();
+        GlStateManager.disableTexture2D();
+        GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
+        GlStateManager.shadeModel(7425);
+        worldrenderer.begin(7, DefaultVertexFormats.POSITION_COLOR);
+        worldrenderer.pos(x, y + height, 0.0D).color(fEndR, fEndG, fEndB, fEndA).endVertex();
+        worldrenderer.pos(x + width, y + height, 0.0D).color(fEndR, fEndG, fEndB, fEndA).endVertex();
+        worldrenderer.pos(x + width, y, 0.0D).color(fStartR, fStartG, fStartB, fStartA).endVertex();
+        worldrenderer.pos(x, y, 0.0D).color(fStartR, fStartG, fStartB, fStartA).endVertex();
+        tessellator.draw();
+        GlStateManager.shadeModel(7424);
+        GlStateManager.enableTexture2D();
+        GlStateManager.disableBlend();
+    }
+
+    public static void drawGradientVertical(int x, int y, int width, int height, int startColor, int endColor) {
+        // convenient integer coordinates overload delegating to float pipeline
+        drawGradientVertical((float) x, (float) y, (float) width, (float) height, startColor, endColor);
+    }
+
     public static void bindTexture(int texture) {
         GlStateManager.bindTexture(texture);
     }
