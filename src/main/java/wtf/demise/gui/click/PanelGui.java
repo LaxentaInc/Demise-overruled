@@ -74,7 +74,7 @@ public class PanelGui extends GuiScreen {
     }
 
     // ---- client info shown in the about dialog ----
-    private static final String CLIENT_NAME = "DEMISE";
+    private static final String CLIENT_NAME = "DEMISE OVERRULED";
     private static final String CLIENT_VERSION = "DEV 2.1.0";
     private static final String CLIENT_BUILD = "#0001";
     private static final String CLIENT_BUILD_DATE = "2026-10-31";
@@ -233,8 +233,9 @@ public class PanelGui extends GuiScreen {
         // re-stroke the border on top so the sidebar doesn't swallow the frame
         RoundedUtils.drawRoundOutline(posX, posY, width, height, 10.0f, 1.0f, new Color(0, 0, 0, 0), BORDER_WINDOW);
 
-        // brand wordmark matching client watermark styling
-        Fonts.urbanist.get(22.0f).drawString(CLIENT_NAME, posX + 14.0f, posY + 11.0f, Color.white.getRGB());
+        // brand wordmark: stylish two-line edition lockup
+        Fonts.urbanist.get(19.0f).drawString("DEMISE", posX + 14.0f, posY + 8.5f, Color.white.getRGB());
+        Fonts.urbanist.get(11.5f).drawString("OVERRULED", posX + 14.0f, posY + 23.5f, ACCENT_CYAN.getRGB());
 
         // ---- navigation ----
         float itemY = posY + NAV_START;
@@ -350,7 +351,7 @@ public class PanelGui extends GuiScreen {
         RoundedUtils.drawRoundOutline(modalX, modalY, modalW, modalH, 8.0f, 0.8f, new Color(13, 17, 24, 255), BORDER_WINDOW);
 
         Fonts.urbanist.get(13.0f).drawString("ABOUT", modalX + 16.0f, modalY + 14.0f, TEXT_MUTED.getRGB());
-        Fonts.urbanist.get(22.0f).drawCenteredString(CLIENT_NAME, modalX + modalW / 2.0f, modalY + 28.0f, Color.white.getRGB());
+        Fonts.urbanist.get(18.0f).drawCenteredString(CLIENT_NAME, modalX + modalW / 2.0f, modalY + 30.0f, Color.white.getRGB());
 
         RenderUtils.drawRect(modalX + 16.0f, modalY + 54.0f, modalW - 32.0f, 1.0f, DIVIDER.getRGB());
 
