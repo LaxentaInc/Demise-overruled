@@ -3,36 +3,87 @@ package wtf.demise.features.modules.impl.visual;
 import org.lwjglx.input.Keyboard;
 import wtf.demise.events.annotations.EventTarget;
 import wtf.demise.events.impl.misc.TickEvent;
+import wtf.demise.events.impl.misc.WorldChangeEvent;
 import wtf.demise.events.impl.render.Render3DEvent;
 import wtf.demise.features.modules.Module;
 import wtf.demise.features.modules.ModuleInfo;
-import wtf.demise.features.values.impl.BoolValue;
 
 @ModuleInfo(name = "Freelook", description = "Look around without turning your body", key = Keyboard.KEY_LMENU)
 public class Freelook extends Module {
-    // optional hold mode: when active, freelook only stays on while key is held down
-    private final BoolValue hold = new BoolValue("Hold to look", false, this);
-
     public float cameraYaw;
     public float cameraPitch;
-    private int previousPerspective;
-    private boolean pressedKey;
+    private int previousPerspective = 0;
+    private boolean active = false;
+
+    public Freelook() {
+        // initialize as permanently enabled utility mod
+        setState(true);
+    }
 
     @Override
-    public void onEnable() {
-        pressedKey = false;
+    public void toggle() {
+        // freelook is an always-enabled utility mod that uses hold-to-look; keypresses are handled via physical key polling
+    }
+
+    @Override
+    public void setEnabled(boolean enabled) {
+        // keep module registered and active in the background
+        super.setEnabled(true);
+    }
+
+    public boolean isActive() {
+        updateActiveState();
+        return active;
+    }
+
+    private void updateActiveState() {
+        if (mc == null || mc.thePlayer == null || mc.theWorld == null) {
+            if (active) {
+                stopLooking();
+            }
+            return;
+        }
+
+        // prevent camera decoupling when user is interacting with an open gui screen
+        if (mc.currentScreen != null) {
+            if (active) {
+                stopLooking();
+            }
+            return;
+        }
+
+        int bind = getKeyBind();
+        // lunar client freelook only activates when a physical key is assigned
+        if (bind == 0) {
+            if (active) {
+                stopLooking();
+            }
+            return;
+        }
+
+        boolean holding = Keyboard.isKeyDown(bind);
+        if (holding && !active) {
+            startLooking();
+        } else if (!holding && active) {
+            stopLooking();
+        }
+    }
+
+    private void startLooking() {
+        active = true;
         if (mc.thePlayer != null) {
             cameraYaw = mc.thePlayer.rotationYaw;
             cameraPitch = mc.thePlayer.rotationPitch;
             previousPerspective = mc.gameSettings.thirdPersonView;
+            // switch to third-person perspective to view surrounding area
             mc.gameSettings.thirdPersonView = 1;
         }
     }
 
-    @Override
-    public void onDisable() {
-        pressedKey = false;
+    private void stopLooking() {
+        active = false;
         if (mc.thePlayer != null && mc.gameSettings != null) {
+            // snap camera back to the original player perspective
             mc.gameSettings.thirdPersonView = previousPerspective;
             if (mc.renderGlobal != null) {
                 mc.renderGlobal.setDisplayListEntitiesDirty();
@@ -42,38 +93,25 @@ public class Freelook extends Module {
 
     @EventTarget
     public void onRender3D(Render3DEvent event) {
-        checkKeyRelease();
+        updateActiveState();
     }
 
     @EventTarget
     public void onTick(TickEvent event) {
-        checkKeyRelease();
+        updateActiveState();
     }
 
-    private void checkKeyRelease() {
-        if (mc.thePlayer == null) return;
-
-        // if hold mode is disabled, keep freelook active until manually toggled off via gui or key
-        if (!hold.get()) {
-            return;
+    @EventTarget
+    public void onWorldChange(WorldChangeEvent event) {
+        if (active) {
+            stopLooking();
         }
+    }
 
-        // prevent auto-disabling when inside gui menus like clickgui or chat
-        if (mc.currentScreen != null) {
-            return;
-        }
-
-        int bind = getKeyBind();
-        if (bind == 0) return;
-
-        // track physical key state to only release when user actively let go of the bound key
-        if (Keyboard.isKeyDown(bind)) {
-            pressedKey = true;
-        } else if (pressedKey) {
-            pressedKey = false;
-            setEnabled(false);
+    @Override
+    public void onDisable() {
+        if (active) {
+            stopLooking();
         }
     }
 }
-
-

@@ -562,7 +562,7 @@ public class EntityRenderer implements IResourceManagerReloadListener {
         float originalPrevYaw = entity.prevRotationYaw;
         float originalPrevPitch = entity.prevRotationPitch;
         
-        if (freelook != null && freelook.isEnabled()) {
+        if (freelook != null && freelook.isEnabled() && freelook.isActive()) {
             entity.rotationYaw = freelook.cameraYaw;
             entity.rotationPitch = freelook.cameraPitch;
             entity.prevRotationYaw = freelook.cameraYaw;
@@ -682,7 +682,7 @@ public class EntityRenderer implements IResourceManagerReloadListener {
         d2 = entity.prevPosZ + (entity.posZ - entity.prevPosZ) * (double) partialTicks;
         cloudFog = mc.renderGlobal.hasCloudFog(d0, d1, d2, partialTicks);
         
-        if (freelook != null && freelook.isEnabled()) {
+        if (freelook != null && freelook.isEnabled() && freelook.isActive()) {
             entity.rotationYaw = originalYaw;
             entity.rotationPitch = originalPitch;
             entity.prevRotationYaw = originalPrevYaw;
@@ -1049,7 +1049,7 @@ public class EntityRenderer implements IResourceManagerReloadListener {
                 smoothCamPartialTicks = partialTicks;
                 f2 = smoothCamFilterX * f4;
                 f3 = smoothCamFilterY * f4;
-                if (freelook != null && freelook.isEnabled()) {
+                if (freelook != null && freelook.isEnabled() && freelook.isActive()) {
                     freelook.cameraYaw += (float)((double)f2 * 0.15D);
                     freelook.cameraPitch -= (float)((double)(f3 * (float)i) * 0.15D);
                     freelook.cameraPitch = net.minecraft.util.MathHelper.clamp_float(freelook.cameraPitch, -90.0F, 90.0F);
@@ -1059,7 +1059,7 @@ public class EntityRenderer implements IResourceManagerReloadListener {
             } else {
                 smoothCamYaw = 0.0F;
                 smoothCamPitch = 0.0F;
-                if (freelook != null && freelook.isEnabled()) {
+                if (freelook != null && freelook.isEnabled() && freelook.isActive()) {
                     freelook.cameraYaw += (float)((double)f2 * 0.15D);
                     freelook.cameraPitch -= (float)((double)(f3 * (float)i) * 0.15D);
                     freelook.cameraPitch = net.minecraft.util.MathHelper.clamp_float(freelook.cameraPitch, -90.0F, 90.0F);
