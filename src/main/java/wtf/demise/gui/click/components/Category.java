@@ -110,7 +110,6 @@ public class Category implements IComponent {
                 rightColY += cardH + rowGap;
             }
 
-         
             module.setX(cardX);
             module.setY(cardY);
             module.setWidth(cardWidth);
