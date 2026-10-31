@@ -71,5 +71,5 @@ eclipse.preferences.version=1
 org.eclipse.jdt.core.compiler.codegen.targetPlatform=17
 org.eclipse.jdt.core.compiler.compliance=17
 org.eclipse.jdt.core.compiler.source=17```
-
+```
 This forces the IDE's Language Server to check your code against Java 17 compliance, clearing those 3,000+ false error highlights. (If any files still show red in the editor, pressing Ctrl+Shift+P -> Java: Clean Java Language Server Workspace or restarting the IDE will force a clean re-index).
