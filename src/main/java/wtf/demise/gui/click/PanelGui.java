@@ -46,12 +46,12 @@ public class PanelGui extends GuiScreen {
     public static boolean showAboutModal = false;
 
     // ---- layout constants (single source of truth for draw + click) ----
-    private static final float SIDEBAR_WIDTH = 118.0f;
-    private static final float TOP_BAR_HEIGHT = 32.0f;
-    private static final float NAV_START = 42.0f;
-    private static final float NAV_ITEM_HEIGHT = 24.0f;
-    private static final float NAV_STEP = 28.0f;
-    private static final float PILL_HEIGHT = 22.0f;
+    public static final float SIDEBAR_WIDTH = 118.0f;
+    public static final float TOP_BAR_HEIGHT = 32.0f;
+    public static final float NAV_START = 42.0f;
+    public static final float NAV_ITEM_HEIGHT = 24.0f;
+    public static final float NAV_STEP = 28.0f;
+    public static final float PILL_HEIGHT = 22.0f;
 
     // cached avatar texture from widgets.svg
     private static ResourceLocation avatarTexture = null;

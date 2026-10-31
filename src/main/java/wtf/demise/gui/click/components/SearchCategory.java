@@ -88,10 +88,11 @@ public class SearchCategory implements IComponent {
     public void drawScreen(int mouseX, int mouseY) {
         handleScroll();
 
-        float startX = PanelGui.posX + 118.0f + 10.0f;
-        float componentStartY = PanelGui.posY + 34.0f;
-        float contentWidth = Math.max(120.0f, PanelGui.width - 118.0f - 20.0f);
-        float viewHeight = Math.max(50.0f, PanelGui.height - 42.0f);
+        float startX = PanelGui.posX + PanelGui.SIDEBAR_WIDTH + 10.0f;
+        float topPadding = 10.0f;
+        float componentStartY = PanelGui.posY + PanelGui.TOP_BAR_HEIGHT + topPadding;
+        float contentWidth = Math.max(120.0f, PanelGui.width - PanelGui.SIDEBAR_WIDTH - 20.0f);
+        float viewHeight = Math.max(50.0f, PanelGui.height - PanelGui.TOP_BAR_HEIGHT - topPadding - 10.0f);
 
         int cols = contentWidth >= 260.0f ? 2 : 1;
         float colGap = 8.0f;
@@ -160,10 +161,11 @@ public class SearchCategory implements IComponent {
 
     @Override
     public void mouseClicked(int mouseX, int mouseY, int mouseButton) {
-        float startX = PanelGui.posX + 118.0f;
-        float componentStartY = PanelGui.posY + 62.0f;
-        float contentWidth = Math.max(130.0f, PanelGui.width - 126.0f);
-        float viewHeight = Math.max(80.0f, PanelGui.height - 70.0f);
+        float startX = PanelGui.posX + PanelGui.SIDEBAR_WIDTH + 10.0f;
+        float topPadding = 10.0f;
+        float componentStartY = PanelGui.posY + PanelGui.TOP_BAR_HEIGHT + topPadding;
+        float contentWidth = Math.max(120.0f, PanelGui.width - PanelGui.SIDEBAR_WIDTH - 20.0f);
+        float viewHeight = Math.max(50.0f, PanelGui.height - PanelGui.TOP_BAR_HEIGHT - topPadding - 10.0f);
         // ensure clicks only register if within the module viewport area
         if (wtf.demise.utils.render.MouseUtils.isHovered(startX - 2.0f, componentStartY, contentWidth + 4.0f, viewHeight, mouseX, mouseY)) {
             filteredModules.forEach(moduleComponent -> moduleComponent.mouseClicked(mouseX, mouseY, mouseButton));

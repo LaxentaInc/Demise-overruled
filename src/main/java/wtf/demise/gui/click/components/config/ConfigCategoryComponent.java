@@ -60,10 +60,11 @@ public class ConfigCategoryComponent implements IComponent {
     public void drawScreen(int mouseX, int mouseY) {
         handleScroll();
 
-        float startX = PanelGui.posX + 118.0f + 10.0f;
-        float componentStartY = PanelGui.posY + 34.0f;
-        float contentWidth = Math.max(120.0f, PanelGui.width - 118.0f - 20.0f);
-        float viewHeight = Math.max(50.0f, PanelGui.height - 42.0f);
+        float startX = PanelGui.posX + PanelGui.SIDEBAR_WIDTH + 10.0f;
+        float topPadding = 10.0f;
+        float componentStartY = PanelGui.posY + PanelGui.TOP_BAR_HEIGHT + topPadding;
+        float contentWidth = Math.max(120.0f, PanelGui.width - PanelGui.SIDEBAR_WIDTH - 20.0f);
+        float viewHeight = Math.max(50.0f, PanelGui.height - PanelGui.TOP_BAR_HEIGHT - topPadding - 10.0f);
 
         float totalHeight = configs.size() * 38.0f;
         maxScroll = Math.max(0, totalHeight - viewHeight);

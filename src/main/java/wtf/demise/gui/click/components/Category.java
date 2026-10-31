@@ -60,9 +60,10 @@ public class Category implements IComponent {
         // strict container dimensions bounded inside the dark window frame
         float sidebarWidth = 118.0f;
         float startX = PanelGui.posX + sidebarWidth + 10.0f;
-        float componentStartY = PanelGui.posY + 34.0f;
+        float topPadding = 10.0f;
+        float componentStartY = PanelGui.posY + PanelGui.TOP_BAR_HEIGHT + topPadding;
         float contentWidth = Math.max(120.0f, PanelGui.width - sidebarWidth - 20.0f);
-        float viewHeight = Math.max(50.0f, PanelGui.height - 42.0f);
+        float viewHeight = Math.max(50.0f, PanelGui.height - PanelGui.TOP_BAR_HEIGHT - topPadding - 10.0f);
 
         // responsive masonry: 2 columns on wide windows, 1 column on compact screens
         int cols = contentWidth >= 260.0f ? 2 : 1;
@@ -129,11 +130,12 @@ public class Category implements IComponent {
 
     @Override
     public void mouseClicked(int mouseX, int mouseY, int mouseButton) {
-        float sidebarWidth = 120.0f;
+        float sidebarWidth = 118.0f;
         float startX = PanelGui.posX + sidebarWidth + 10.0f;
-        float componentStartY = PanelGui.posY + 36.0f;
+        float topPadding = 10.0f;
+        float componentStartY = PanelGui.posY + PanelGui.TOP_BAR_HEIGHT + topPadding;
         float contentWidth = Math.max(120.0f, PanelGui.width - sidebarWidth - 20.0f);
-        float viewHeight = Math.max(50.0f, PanelGui.height - 44.0f);
+        float viewHeight = Math.max(50.0f, PanelGui.height - PanelGui.TOP_BAR_HEIGHT - topPadding - 10.0f);
 
         // deliver mouse clicks strictly inside visible container
         if (MouseUtils.isHovered(startX, componentStartY, contentWidth, viewHeight, mouseX, mouseY)) {
