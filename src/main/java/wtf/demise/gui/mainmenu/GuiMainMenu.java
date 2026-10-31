@@ -12,6 +12,7 @@ import wtf.demise.gui.button.MenuButton;
 import wtf.demise.gui.font.Fonts;
 import wtf.demise.utils.math.TimerUtils;
 import wtf.demise.utils.render.RenderUtils;
+import wtf.demise.utils.render.VideoBackground;
 import wtf.demise.utils.render.shader.impl.Blur;
 import wtf.demise.utils.render.shader.impl.MainMenu;
 import wtf.demise.utils.render.shader.impl.Shadow;
@@ -147,6 +148,13 @@ public class GuiMainMenu extends GuiScreen {
     public void mouseClicked(int mouseX, int mouseY, int mouseButton) throws IOException {
         buttons.forEach(button -> button.mouseClicked(mouseX, mouseY, mouseButton));
         super.mouseClicked(mouseX, mouseY, mouseButton);
+    }
+
+    @Override
+    public void onGuiClosed() {
+        // purge video textures from memory when leaving main menu to free vram for 3d gameplay
+        VideoBackground.cleanup();
+        super.onGuiClosed();
     }
 
     public boolean doesGuiPauseGame() {

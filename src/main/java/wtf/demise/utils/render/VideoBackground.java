@@ -88,4 +88,18 @@ public class VideoBackground implements InstanceAccess {
 
         GlStateManager.disableBlend();
     }
+
+    public static void cleanup() {
+        if (mc == null || mc.getTextureManager() == null) return;
+        // flush all allocated video frame textures from opengl vram and client texture map
+        for (ResourceLocation location : FRAME_LOCATIONS) {
+            if (location != null) {
+                try {
+                    mc.getTextureManager().deleteTexture(location);
+                } catch (Exception ignored) {
+                    // ignore texture lookup anomalies during bulk cleanup
+                }
+            }
+        }
+    }
 }
