@@ -2,7 +2,9 @@ package wtf.demise.gui.click;
 
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.ScaledResolution;
+import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.util.MathHelper;
+import net.minecraft.util.ResourceLocation;
 import org.lwjglx.input.Keyboard;
 import wtf.demise.Demise;
 import wtf.demise.features.modules.ModuleCategory;
@@ -16,7 +18,10 @@ import wtf.demise.utils.render.RenderUtils;
 import wtf.demise.utils.render.RoundedUtils;
 import wtf.demise.gui.font.Fonts;
 
+import javax.imageio.ImageIO;
 import java.awt.*;
+import java.awt.image.BufferedImage;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -42,11 +47,31 @@ public class PanelGui extends GuiScreen {
 
     // ---- layout constants (single source of truth for draw + click) ----
     private static final float SIDEBAR_WIDTH = 118.0f;
-    private static final float TOP_BAR_HEIGHT = 30.0f;
+    private static final float TOP_BAR_HEIGHT = 32.0f;
     private static final float NAV_START = 42.0f;
     private static final float NAV_ITEM_HEIGHT = 24.0f;
     private static final float NAV_STEP = 28.0f;
-    private static final float PILL_HEIGHT = 20.0f;
+    private static final float PILL_HEIGHT = 22.0f;
+
+    // cached avatar texture from widgets.svg
+    private static ResourceLocation avatarTexture = null;
+
+    private static ResourceLocation getAvatarTexture() {
+        if (avatarTexture != null) return avatarTexture;
+        try {
+            File file = new File("C:/Users/MY-PC/Documents/demise-534fadf93d0842db6ca75064f2025650e3c4a3b4/src/main/resources/assets/minecraft/demise/img/widgets.png");
+            if (file.exists()) {
+                BufferedImage image = ImageIO.read(file);
+                DynamicTexture dyn = new DynamicTexture(image);
+                avatarTexture = net.minecraft.client.Minecraft.getMinecraft().getTextureManager().getDynamicTextureLocation("widgets_avatar", dyn);
+                return avatarTexture;
+            }
+        } catch (Exception ignored) {
+            // fallback to classpath resource if direct file io fails
+        }
+        avatarTexture = new ResourceLocation("demise/img/widgets.png");
+        return avatarTexture;
+    }
 
     // ---- client info shown in the about dialog ----
     private static final String CLIENT_NAME = "DEMISE";
@@ -63,7 +88,7 @@ public class PanelGui extends GuiScreen {
     private static final Color PILL_ACTIVE_BG = new Color(0, 132, 255, 45);
     private static final Color PILL_ACTIVE_BORDER = new Color(0, 150, 255, 220);
     private static final Color BUTTON_BG = new Color(18, 24, 34, 250);
-    private static final Color BUTTON_BG_HOVER = new Color(24, 32, 46, 250);
+    private static final Color BUTTON_BG_HOVER = new Color(26, 36, 52, 250);
     private static final Color BUTTON_BORDER = new Color(42, 54, 76, 255);
     private static final Color BUTTON_BORDER_HOVER = new Color(0, 132, 255, 180);
     private static final Color TEXT_PRIMARY = new Color(245, 248, 255, 255);
@@ -71,7 +96,7 @@ public class PanelGui extends GuiScreen {
     private static final Color TEXT_MUTED = new Color(155, 168, 188, 255);
     private static final Color TEXT_FAINT = new Color(110, 122, 142, 255);
     private static final Color STATUS_GREEN = new Color(76, 217, 100, 255);
-    private static final Color DIVIDER = new Color(255, 255, 255, 10);
+    private static final Color DIVIDER = new Color(42, 54, 76, 160);
 
     // ---- sidebar navigation ----
     private static class NavItem {
@@ -125,15 +150,15 @@ public class PanelGui extends GuiScreen {
 
     // ---- button rects: shared by drawscreen and mouseclicked so hitboxes never drift ----
     private float[] saveButtonRect() {
-        return new float[]{posX + SIDEBAR_WIDTH + 13.0f, posY + (TOP_BAR_HEIGHT - PILL_HEIGHT) / 2.0f, 58.0f, PILL_HEIGHT};
+        return new float[]{posX + SIDEBAR_WIDTH + 14.0f, posY + (TOP_BAR_HEIGHT - PILL_HEIGHT) / 2.0f, 58.0f, PILL_HEIGHT};
     }
 
     private float[] searchButtonRect() {
-        return new float[]{posX + width - 13.0f - 54.0f, posY + (TOP_BAR_HEIGHT - PILL_HEIGHT) / 2.0f, 54.0f, PILL_HEIGHT};
+        return new float[]{posX + width - 14.0f - 62.0f, posY + (TOP_BAR_HEIGHT - PILL_HEIGHT) / 2.0f, 62.0f, PILL_HEIGHT};
     }
 
     private float[] aboutButtonRect() {
-        return new float[]{posX + width - 13.0f - 54.0f - 8.0f - 46.0f, posY + (TOP_BAR_HEIGHT - PILL_HEIGHT) / 2.0f, 46.0f, PILL_HEIGHT};
+        return new float[]{posX + width - 14.0f - 62.0f - 8.0f - 56.0f, posY + (TOP_BAR_HEIGHT - PILL_HEIGHT) / 2.0f, 56.0f, PILL_HEIGHT};
     }
 
     @Override
@@ -200,8 +225,9 @@ public class PanelGui extends GuiScreen {
 
         // ---- sidebar ----
         RoundedUtils.drawRound(posX, posY, SIDEBAR_WIDTH, height, 10.0f, BG_SIDEBAR);
-        // square off the sidebar's right edge so it meets the divider cleanly
-        RenderUtils.drawRect(posX + SIDEBAR_WIDTH - 10.0f, posY, 10.0f, height, BG_SIDEBAR.getRGB());
+        // square off the sidebar right edge so it meets the content area cleanly
+        RenderUtils.drawRect(posX + SIDEBAR_WIDTH - 8.0f, posY, 8.0f, height, BG_SIDEBAR.getRGB());
+        // clean 1px hairline divider between sidebar and main grid
         RenderUtils.drawRect(posX + SIDEBAR_WIDTH, posY, 1.0f, height, DIVIDER.getRGB());
 
         // re-stroke the border on top so the sidebar doesn't swallow the frame
@@ -242,14 +268,22 @@ public class PanelGui extends GuiScreen {
         float profileY = posY + height - 38.0f;
         float avatarX = posX + 12.0f;
         float avatarY = profileY + 2.0f;
+        float avatarSize = 20.0f;
 
-        RenderUtils.drawCircle(avatarX + 9.0f, avatarY + 9.0f, 0, 360, 9.0f, 0.1f, true, new Color(25, 35, 50, 255).getRGB());
-        Fonts.urbanist.get(14.0f).drawCenteredString("D", avatarX + 9.0f, avatarY + 3.5f, ACCENT_CYAN.getRGB());
+        // rounded avatar badge
+        RoundedUtils.drawRound(avatarX - 1.0f, avatarY - 1.0f, avatarSize + 2.0f, avatarSize + 2.0f, 5.0f, new Color(18, 24, 34, 255));
+        RoundedUtils.drawRoundOutline(avatarX - 1.0f, avatarY - 1.0f, avatarSize + 2.0f, avatarSize + 2.0f, 5.0f, 0.8f, new Color(0, 0, 0, 0), BORDER_WINDOW);
+
+        // render rasterized widgets svg icon
+        ResourceLocation avatarLoc = getAvatarTexture();
+        if (avatarLoc != null) {
+            RenderUtils.drawImage(avatarLoc, avatarX, avatarY, (int) avatarSize, (int) avatarSize);
+        }
 
         String username = mc.getSession() != null ? mc.getSession().getUsername() : "Player";
-        Fonts.urbanist.get(15.0f).drawString(username, avatarX + 24.0f, avatarY + 1.0f, Color.white.getRGB());
-        RenderUtils.drawCircle(avatarX + 25.5f, avatarY + 16.0f, 0, 360, 2.0f, 0.1f, true, STATUS_GREEN.getRGB());
-        Fonts.urbanist.get(13.0f).drawString("Online", avatarX + 31.0f, avatarY + 12.0f, TEXT_MUTED.getRGB());
+        Fonts.urbanist.get(15.0f).drawString(username, avatarX + 26.0f, avatarY + 2.0f, Color.white.getRGB());
+        RenderUtils.drawCircle(avatarX + 27.5f, avatarY + 16.5f, 0, 360, 2.0f, 0.1f, true, STATUS_GREEN.getRGB());
+        Fonts.urbanist.get(13.0f).drawString("Online", avatarX + 33.0f, avatarY + 12.5f, TEXT_MUTED.getRGB());
 
         // ---- content area (single scissored draw pass with mouse coords) ----
         if (selectedSearchCategory != null) {
@@ -264,8 +298,8 @@ public class PanelGui extends GuiScreen {
         // ---- top bar strip ----
         float stripX = posX + SIDEBAR_WIDTH + 1.0f;
         float stripW = width - SIDEBAR_WIDTH - 2.0f;
-        RoundedUtils.drawRound(stripX, posY + 1.0f, stripW, TOP_BAR_HEIGHT, 4.0f, BG_WINDOW);
-        RenderUtils.drawRect(stripX, posY + TOP_BAR_HEIGHT - 4.0f, stripW, 4.0f, BG_WINDOW.getRGB());
+        // subtle hairline divider below top bar
+        RenderUtils.drawRect(stripX, posY + TOP_BAR_HEIGHT, stripW, 1.0f, new Color(38, 48, 68, 140).getRGB());
 
         // save button with brief "saved" feedback
         float[] save = saveButtonRect();
@@ -291,15 +325,16 @@ public class PanelGui extends GuiScreen {
     }
 
     /**
-     * text pill button: rounded outline + horizontally centered label.
+     * text pill button: rounded outline + horizontally and vertically centered label.
      * pass a non-null accent to force the label color (active state).
      */
     private void drawPill(String label, float x, float y, float w, float h, boolean hovered, Color accent) {
         Color fill = accent != null ? PILL_ACTIVE_BG : (hovered ? BUTTON_BG_HOVER : BUTTON_BG);
         Color border = accent != null ? PILL_ACTIVE_BORDER : (hovered ? BUTTON_BORDER_HOVER : BUTTON_BORDER);
         RoundedUtils.drawRoundOutline(x, y, w, h, 5.0f, 0.8f, fill, border);
-        Color textColor = accent != null ? accent : (hovered ? Color.white : TEXT_BODY);
-        Fonts.urbanist.get(14.0f).drawCenteredString(label, x + w / 2.0f, y + (h - 14.0f) / 2.0f + 1.0f, textColor.getRGB());
+        Color textColor = accent != null ? accent : (hovered ? Color.white : TEXT_PRIMARY);
+        float textY = y + (h - Fonts.interBold.get(13.0f).getHeight()) / 2.0f + 0.5f;
+        Fonts.interBold.get(13.0f).drawCenteredString(label, x + w / 2.0f, textY, textColor.getRGB());
     }
 
     private void drawAboutModal() {
