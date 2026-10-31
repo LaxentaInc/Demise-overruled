@@ -66,6 +66,9 @@ public class ModuleComponent implements IComponent {
                 settings.add(new StringComponent(textValue));
             }
         }
+
+        // append interactive keybind component to module card settings
+        settings.add(new KeybindComponent(module));
     }
 
     public ModuleComponent(Module module) {

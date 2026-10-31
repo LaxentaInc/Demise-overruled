@@ -8,17 +8,19 @@ import wtf.demise.features.modules.Module;
 import wtf.demise.features.modules.ModuleInfo;
 import wtf.demise.features.values.impl.BoolValue;
 
-@ModuleInfo(name = "Freelook", description = "Hold key to look around without turning your body", key = Keyboard.KEY_LMENU)
+@ModuleInfo(name = "Freelook", description = "Look around without turning your body", key = Keyboard.KEY_LMENU)
 public class Freelook extends Module {
-    // optional toggle mode, off by default to maintain standard client hold-to-look behavior
-    private final BoolValue toggle = new BoolValue("Toggle", false, this);
+    // optional hold mode: when active, freelook only stays on while key is held down
+    private final BoolValue hold = new BoolValue("Hold to look", false, this);
 
     public float cameraYaw;
     public float cameraPitch;
     private int previousPerspective;
+    private boolean pressedKey;
 
     @Override
     public void onEnable() {
+        pressedKey = false;
         if (mc.thePlayer != null) {
             cameraYaw = mc.thePlayer.rotationYaw;
             cameraPitch = mc.thePlayer.rotationPitch;
@@ -29,6 +31,7 @@ public class Freelook extends Module {
 
     @Override
     public void onDisable() {
+        pressedKey = false;
         if (mc.thePlayer != null && mc.gameSettings != null) {
             mc.gameSettings.thirdPersonView = previousPerspective;
             if (mc.renderGlobal != null) {
@@ -50,8 +53,8 @@ public class Freelook extends Module {
     private void checkKeyRelease() {
         if (mc.thePlayer == null) return;
 
-        // if user enabled toggle mode, keep active until manually toggled off
-        if (toggle.get()) {
+        // if hold mode is disabled, keep freelook active until manually toggled off via gui or key
+        if (!hold.get()) {
             return;
         }
 
@@ -60,8 +63,14 @@ public class Freelook extends Module {
             return;
         }
 
-        // default hold mode: the moment the bound key is released in-game, disable immediately
-        if (getKeyBind() != 0 && !Keyboard.isKeyDown(getKeyBind())) {
+        int bind = getKeyBind();
+        if (bind == 0) return;
+
+        // track physical key state to only release when user actively let go of the bound key
+        if (Keyboard.isKeyDown(bind)) {
+            pressedKey = true;
+        } else if (pressedKey) {
+            pressedKey = false;
             setEnabled(false);
         }
     }

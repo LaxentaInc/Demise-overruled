@@ -1,13 +1,26 @@
 # Demise OverRuled By @Laxenta LLC. All rights reserved.
 A Minecraft client based around bypassing strict anticheats.
-I am scared if github removed accounts if i distribute the binary, i will provide it on the site. https://colorwall.xyz
-### how to install?
-1) So first of all, download the .jar from releases (i will upload it soon, if want it instantly js dm me on discord @laxenta.me), and rename it to `demise` whilst keeping the file extension same
-2) then go and download the .json from `/json/demise.json` or from Releases.
-3) create a new folder in minecraft version dir named `demise`, and put both of the files in there
-4) go on the your mc launcher (sk, tl idk whatever tf you use) and create a new installation using the `demise` version
+I am not going to host cheat clients on github and risk my account.
+Get it on: https://colorwall.xyz/api/download/demise
+### How to install?
+[demise.json](https://github.com/LaxentaInc/Demise-overruled/releases/download/v2.1.1/demise.json) 
+Let me paste screenshots, so its IMMIDIATELY CLEAR HOW TO USE THE JAR + JSON FILE AND WHERE TO PUT THEM:
 
-### how to build?
+
+## DO "CTRL + R"  and PASTE " %appdata%\.minecraft\versions "
+<img width="436" height="229" alt="image" src="https://github.com/user-attachments/assets/e77e30ca-1e4a-4623-8b97-bb7f5858eba4" />
+
+## THEN CREATE A FOLDER NAMED DEMISE
+<img width="555" height="470" alt="image" src="https://github.com/user-attachments/assets/eb3ae3d6-2468-4374-9421-3bb790d344b8" />
+
+
+<img width="1446" height="896" alt="image" src="https://github.com/user-attachments/assets/d74c60ad-5222-4ece-a407-e021b43d3763" />
+
+- AND THATS IT, PUT `demise.json` + `demise.jar` INSIDE THAT FOLDER AS SHOWN IN THE ABOVE SCREENSHOT.
+
+- Done. Enjoy! Make sure to report ANY bugs, in issues please. Or anything you want.
+
+### How to build?
 1) Make sure you have **Java 17 / JDK 17** installed.
 2) Clone the repository and navigate to the project directory.
 3) Run the Gradle `shadowJar` task to compile the client:
@@ -35,7 +48,7 @@ if ($LASTEXITCODE -eq 0) {
 }
 ```
 
-### quick launch & developer run (instant execution)
+### Quick launch & developer run (instant execution)
 Instead of building the full JAR and copying it to `.minecraft`, you can launch Demise **directly from the terminal in 2 seconds**:
 
 ```powershell
@@ -44,7 +57,7 @@ Instead of building the full JAR and copying it to `.minecraft`, you can launch 
 ```
 *When you make code changes, Gradle will only recompile the modified file incrementally and boot the client immediately!*
 
-### the client is in early development, feel free to report any bugs in the issues or on the discord server
+### The client is in early development, feel free to report any bugs in the issues or on the discord server or on https://colorwall.xyz/feedback
 
 
 
