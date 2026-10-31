@@ -10,11 +10,10 @@ import wtf.demise.features.modules.Module;
 import wtf.demise.features.modules.ModuleCategory;
 import wtf.demise.gui.click.IComponent;
 import wtf.demise.gui.click.PanelGui;
-import wtf.demise.gui.font.Fonts;
 import wtf.demise.utils.math.MathUtils;
+import wtf.demise.utils.render.MouseUtils;
 import wtf.demise.utils.render.RenderUtils;
 
-import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -52,43 +51,71 @@ public class Category implements IComponent {
         if (isSelected) {
             handleScroll();
 
-            float startX = PanelGui.posX + 118.0f;
-            // module list viewport starts below the subheader strip
-            float componentStartY = PanelGui.posY + 62.0f;
-            float contentWidth = Math.max(130.0f, PanelGui.width - 126.0f);
-            float viewHeight = Math.max(80.0f, PanelGui.height - 70.0f);
+            // content area bounds matching new panel geometry
+            float sidebarWidth = 140.0f;
+            float startX = PanelGui.posX + sidebarWidth + 14.0f;
+            float componentStartY = PanelGui.posY + 44.0f;
+            float contentWidth = Math.max(160.0f, PanelGui.width - sidebarWidth - 28.0f);
+            float viewHeight = Math.max(80.0f, PanelGui.height - 52.0f);
 
-            // single column flat list for maximum readability and density
-            int cols = 1;
-            float colGap = 0.0f;
-            float rowGap = 1.0f;
-            float cardWidth = contentWidth;
-            // compact row height matching vape-style module list
-            float cardHeight = 24.0f;
+            // 2-column masonry card grid matching fdp design specification
+            float colGap = 10.0f;
+            float rowGap = 10.0f;
+            float cardWidth = (contentWidth - colGap) / 2.0f;
 
-            int totalRows = (moduleComponents.size() + cols - 1) / cols;
-            float totalHeight = totalRows * cardHeight + Math.max(0, totalRows - 1) * rowGap;
+            float leftColY = componentStartY;
+            float rightColY = componentStartY;
 
-            maxScroll = Math.max(0, totalHeight - viewHeight);
+            // pre-calculate layout heights and scroll bounds
+            for (ModuleComponent module : moduleComponents) {
+                float cardH = module.computeCardHeight();
+                if (leftColY <= rightColY) {
+                    leftColY += cardH + rowGap;
+                } else {
+                    rightColY += cardH + rowGap;
+                }
+            }
+
+            float totalContentHeight = Math.max(leftColY, rightColY) - componentStartY;
+            maxScroll = Math.max(0.0f, totalContentHeight - viewHeight);
             scrollOffset = MathUtils.interpolate(scrollOffset, targetScrollOffset, 0.25f);
 
+            // scissor viewport to prevent cards from bleeding outside the main canvas
             RenderUtils.scissor(startX - 2.0f, componentStartY, contentWidth + 4.0f, viewHeight, PanelGui.interpolatedScale);
             GL11.glEnable(GL11.GL_SCISSOR_TEST);
 
-            float componentOffsetY = componentStartY + 2.0f;
-            for (int i = 0; i < moduleComponents.size(); i++) {
-                int col = i % cols;
-                int row = i / cols;
-                float cardX = startX + col * (cardWidth + colGap);
-                float cardY = componentOffsetY + row * (cardHeight + rowGap) - scrollOffset;
+            // reset column runners for actual drawing pass
+            leftColY = componentStartY;
+            rightColY = componentStartY;
 
-                ModuleComponent module = moduleComponents.get(i);
+            for (ModuleComponent module : moduleComponents) {
+                float cardH = module.computeCardHeight();
+                float cardX;
+                float cardY;
+
+                // balance cards between columns dynamically
+                if (leftColY <= rightColY) {
+                    cardX = startX;
+                    cardY = leftColY - scrollOffset;
+                    leftColY += cardH + rowGap;
+                } else {
+                    cardX = startX + cardWidth + colGap;
+                    cardY = rightColY - scrollOffset;
+                    rightColY += cardH + rowGap;
+                }
+
                 module.setX(cardX);
                 module.setY(cardY);
                 module.setWidth(cardWidth);
-                module.setHeight(cardHeight);
-                module.render(shader);
-                module.setVisible(cardY + cardHeight >= componentStartY && cardY <= componentStartY + viewHeight);
+                module.setHeight(cardH);
+
+                // cull off-screen cards for high fps rendering performance
+                boolean isCardVisible = (cardY + cardH >= componentStartY && cardY <= componentStartY + viewHeight);
+                module.setVisible(isCardVisible);
+
+                if (isCardVisible) {
+                    module.render(shader);
+                }
             }
 
             GL11.glDisable(GL11.GL_SCISSOR_TEST);
@@ -97,36 +124,50 @@ public class Category implements IComponent {
 
     @Override
     public void drawScreen(int mouseX, int mouseY) {
-        moduleComponents.forEach(moduleComponent -> moduleComponent.drawScreen(mouseX, mouseY));
+        if (!isSelected) return;
+        moduleComponents.forEach(moduleComponent -> {
+            if (moduleComponent.isVisible()) {
+                moduleComponent.drawScreen(mouseX, mouseY);
+            }
+        });
     }
 
     @Override
     public void mouseClicked(int mouseX, int mouseY, int mouseButton) {
-        float startX = PanelGui.posX + 118.0f;
-        float componentStartY = PanelGui.posY + 62.0f;
-        float contentWidth = Math.max(130.0f, PanelGui.width - 126.0f);
-        float viewHeight = Math.max(80.0f, PanelGui.height - 70.0f);
-        // ensure touch and mouse click events only propagate if within the scroll viewport
-        if (wtf.demise.utils.render.MouseUtils.isHovered(startX - 2.0f, componentStartY, contentWidth + 4.0f, viewHeight, mouseX, mouseY)) {
-            moduleComponents.forEach(moduleComponent -> moduleComponent.mouseClicked(mouseX, mouseY, mouseButton));
+        if (!isSelected) return;
+        float sidebarWidth = 140.0f;
+        float startX = PanelGui.posX + sidebarWidth + 14.0f;
+        float componentStartY = PanelGui.posY + 44.0f;
+        float contentWidth = Math.max(160.0f, PanelGui.width - sidebarWidth - 28.0f);
+        float viewHeight = Math.max(80.0f, PanelGui.height - 52.0f);
+
+        // deliver clicks only if inside content viewport
+        if (MouseUtils.isHovered(startX - 2.0f, componentStartY, contentWidth + 4.0f, viewHeight, mouseX, mouseY)) {
+            moduleComponents.forEach(moduleComponent -> {
+                if (moduleComponent.isVisible()) {
+                    moduleComponent.mouseClicked(mouseX, mouseY, mouseButton);
+                }
+            });
         }
     }
 
     @Override
     public void keyTyped(char typedChar, int keyCode) {
+        if (!isSelected) return;
         moduleComponents.forEach(moduleComponent -> moduleComponent.keyTyped(typedChar, keyCode));
     }
 
     @Override
     public void mouseReleased(int mouseX, int mouseY, int state) {
+        if (!isSelected) return;
         moduleComponents.forEach(moduleComponent -> moduleComponent.mouseReleased(mouseX, mouseY, state));
     }
 
     public void handleScroll() {
         int wheel = Mouse.getDWheel();
         if (wheel != 0) {
-            float scrollAmount = wheel > 0 ? -25 : 25;
-            targetScrollOffset = MathHelper.clamp_float(targetScrollOffset + scrollAmount, 0, maxScroll);
+            float scrollAmount = wheel > 0 ? -28.0f : 28.0f;
+            targetScrollOffset = MathHelper.clamp_float(targetScrollOffset + scrollAmount, 0.0f, maxScroll);
         }
     }
 }

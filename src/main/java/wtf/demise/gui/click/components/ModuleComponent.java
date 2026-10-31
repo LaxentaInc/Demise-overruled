@@ -8,9 +8,12 @@ import wtf.demise.features.values.Value;
 import wtf.demise.features.values.impl.*;
 import wtf.demise.gui.click.Component;
 import wtf.demise.gui.click.IComponent;
-import wtf.demise.gui.click.PanelGui;
 import wtf.demise.gui.click.components.impl.*;
 import wtf.demise.gui.font.Fonts;
+import wtf.demise.utils.animations.Direction;
+import wtf.demise.utils.animations.impl.SmoothStepAnimation;
+import wtf.demise.utils.misc.SoundUtil;
+import wtf.demise.utils.render.ColorUtils;
 import wtf.demise.utils.render.MouseUtils;
 import wtf.demise.utils.render.RoundedUtils;
 
@@ -22,36 +25,40 @@ import java.util.concurrent.CopyOnWriteArrayList;
 public class ModuleComponent implements IComponent {
     private Module module;
     private ModuleCategory category;
-    private float x, y, width = 140.0f, height = 24.0f;
-    private boolean isHovered, optionsHovered;
-    public boolean visible;
+    private float x, y, width = 190.0f, height = 30.0f;
+    private boolean isHovered;
+    public boolean visible = true;
     private final CopyOnWriteArrayList<Component> settings = new CopyOnWriteArrayList<>();
 
-    // smooth interpolation targets for hover and enable transitions
-    private float hoverAlpha = 0.0f;
-    private float enableAlpha = 0.0f;
+    // smooth animation for the master toggle switch
+    private final SmoothStepAnimation toggleAnimation = new SmoothStepAnimation(180, 1);
+
+    // modern card color palette matching fdp design specification
+    private static final Color COLOR_CARD_BG = new Color(13, 17, 24, 255);
+    private static final Color COLOR_CARD_BORDER = new Color(255, 255, 255, 12);
+    private static final Color COLOR_CARD_BORDER_HOVER = new Color(255, 255, 255, 22);
+    private static final Color COLOR_TRACK_OFF = new Color(24, 30, 42, 255);
+    private static final Color COLOR_TRACK_ON = new Color(0, 132, 255, 255);
+    private static final Color COLOR_KNOB = new Color(245, 248, 255, 255);
+    private static final Color COLOR_TITLE = new Color(245, 248, 255, 255);
 
     public ModuleComponent(Module module, ModuleCategory category) {
         this.category = category;
         this.module = module;
+        this.toggleAnimation.setDirection(module.isEnabled() ? Direction.FORWARDS : Direction.BACKWARDS);
 
         for (Value value : module.getValues()) {
             if (value instanceof BoolValue boolValue) {
                 settings.add(new BooleanComponent(boolValue));
-            }
-            if (value instanceof ColorValue colorValue) {
-                settings.add(new ColorPickerComponent(colorValue));
-            }
-            if (value instanceof SliderValue sliderValue) {
+            } else if (value instanceof SliderValue sliderValue) {
                 settings.add(new SliderComponent(sliderValue));
-            }
-            if (value instanceof ModeValue modeValue) {
+            } else if (value instanceof ModeValue modeValue) {
                 settings.add(new ModeComponent(modeValue));
-            }
-            if (value instanceof MultiBoolValue multiBoolValue) {
+            } else if (value instanceof ColorValue colorValue) {
+                settings.add(new ColorPickerComponent(colorValue));
+            } else if (value instanceof MultiBoolValue multiBoolValue) {
                 settings.add(new MultiBooleanComponent(multiBoolValue));
-            }
-            if (value instanceof TextValue textValue) {
+            } else if (value instanceof TextValue textValue) {
                 settings.add(new StringComponent(textValue));
             }
         }
@@ -64,106 +71,120 @@ public class ModuleComponent implements IComponent {
     public void initCategory() {
     }
 
+    // calculates full card height including header, child settings, and bottom padding
+    public float computeCardHeight() {
+        float h = 26.0f; // header strip
+        for (Component setting : settings) {
+            if (setting.isVisible()) {
+                h += setting.getHeight();
+            }
+        }
+        return h + 4.0f;
+    }
+
     public void render(boolean shader) {
-        boolean enabled = module.isEnabled();
+        if (!visible) return;
 
-        // interpolate hover and enable alpha for buttery smooth transitions
-        float targetHover = isHovered ? 1.0f : 0.0f;
-        hoverAlpha += (targetHover - hoverAlpha) * 0.35f;
-        float targetEnable = enabled ? 1.0f : 0.0f;
-        enableAlpha += (targetEnable - enableAlpha) * 0.3f;
+        this.height = computeCardHeight();
+        this.toggleAnimation.setDirection(module.isEnabled() ? Direction.FORWARDS : Direction.BACKWARDS);
 
-        if (!shader) {
-            // base row background: near-invisible until hovered, then subtle lift
-            int hoverBgAlpha = (int) (hoverAlpha * 35);
-            if (hoverBgAlpha > 2) {
-                RoundedUtils.drawRound(x, y, width, height, 2.0f, new Color(255, 255, 255, hoverBgAlpha));
+        // draw outer card container with subtle rounded corners and hairline border
+        RoundedUtils.drawRoundOutline(x, y, width, height, 5.0f, 0.5f, COLOR_CARD_BG, isHovered ? COLOR_CARD_BORDER_HOVER : COLOR_CARD_BORDER);
+
+        // module title in bold typography
+        Fonts.interSemiBold.get(10.5f).drawString(module.getName(), x + 8.0f, y + 8.0f, COLOR_TITLE.getRGB());
+
+        // master toggle switch on top right of the card
+        float switchW = 20.0f;
+        float switchH = 10.0f;
+        float switchX = x + width - switchW - 8.0f;
+        float switchY = y + 7.5f;
+
+        float anim = (float) toggleAnimation.getOutput();
+        Color trackBg = ColorUtils.interpolateColorC(COLOR_TRACK_OFF, COLOR_TRACK_ON, anim);
+
+        // draw switch track
+        RoundedUtils.drawRound(switchX, switchY, switchW, switchH, 5.0f, trackBg);
+
+        // draw switch knob
+        float knobDiameter = 7.0f;
+        float knobX = switchX + 1.5f + (switchW - knobDiameter - 3.0f) * anim;
+        float knobY = switchY + (switchH - knobDiameter) / 2.0f;
+        RoundedUtils.drawRound(knobX, knobY, knobDiameter, knobDiameter, knobDiameter / 2.0f, COLOR_KNOB);
+
+        // render nested child settings directly inside the card body
+        float settingY = y + 25.0f;
+        for (Component setting : settings) {
+            if (setting.isVisible()) {
+                setting.setX(x + 2.0f);
+                setting.setY(settingY);
+                setting.setWidth(width - 4.0f);
+                setting.drawScreen(0, 0); // coordinates handled by mouse utils
+                settingY += setting.getHeight();
             }
-
-            // thin left accent bar animates in when module is enabled
-            if (enableAlpha > 0.05f) {
-                int barAlpha = (int) (enableAlpha * 255);
-                // accent color: soft violet that reads as intentional and distinctive
-                RoundedUtils.drawRound(x + 1.0f, y + 4.0f, 2.0f, height - 8.0f, 1.0f, new Color(124, 106, 239, barAlpha));
-            }
-
-            // module name: white when active, muted gray when off, brightens on hover
-            float textX = x + 9.0f;
-            float textY = y + (height - Fonts.interMedium.get(10.5f).getHeight()) / 2.0f;
-
-            int r, g, b;
-            if (enabled) {
-                // enabled: bright white text
-                r = 255; g = 255; b = 255;
-            } else {
-                // disabled: muted gray, brightens on hover
-                int base = 145;
-                int boost = (int) (hoverAlpha * 65);
-                r = base + boost; g = base + boost; b = base + boost + (int) (hoverAlpha * 10);
-            }
-            Fonts.interMedium.get(10.5f).drawString(module.getName(), textX, textY, new Color(Math.min(r, 255), Math.min(g, 255), Math.min(b, 255)).getRGB());
-
-            // keybind badge on the right side, only when bound
-            // position shifts left if dots button is visible to avoid overlap
-            float dotsZoneW = 18.0f;
-            if (module.getKeyBind() != 0) {
-                String keyName = org.lwjglx.input.Keyboard.getKeyName(module.getKeyBind());
-                if (keyName != null && !keyName.isEmpty()) {
-                    float badgeW = Fonts.interRegular.get(8.5f).getStringWidth(keyName) + 8.0f;
-                    float badgeX = x + width - badgeW - dotsZoneW - 4.0f;
-                    float badgeY = y + (height - 12.0f) / 2.0f;
-                    // subtle dark pill behind the key name
-                    RoundedUtils.drawRound(badgeX, badgeY, badgeW, 12.0f, 2.0f, new Color(255, 255, 255, 12));
-                    Fonts.interRegular.get(8.5f).drawString(keyName, badgeX + 4.0f, badgeY + 2.0f, new Color(110, 115, 130).getRGB());
-                }
-            }
-
-            // three-dot options button on the far right, visible on hover for discoverability
-            float dotsAlpha = Math.max(hoverAlpha, optionsHovered ? 1.0f : 0.0f);
-            if (dotsAlpha > 0.05f) {
-                float dotsX = x + width - 14.0f;
-                float dotsY = y + (height - Fonts.interMedium.get(10).getHeight()) / 2.0f;
-                int dotsCol = optionsHovered
-                        ? new Color(255, 255, 255, (int) (dotsAlpha * 255)).getRGB()
-                        : new Color(120, 120, 140, (int) (dotsAlpha * 180)).getRGB();
-                Fonts.interMedium.get(10).drawString("•••", dotsX - 4.0f, dotsY, dotsCol);
-            }
-        } else {
-            RoundedUtils.drawShaderRound(x, y, width, height, 2.0f, Color.black);
         }
     }
 
     @Override
     public void drawScreen(int mouseX, int mouseY) {
         this.isHovered = MouseUtils.isHovered(x, y, width, height, mouseX, mouseY);
-        // dots hit area covers the right 18px strip of the row
-        this.optionsHovered = MouseUtils.isHovered(x + width - 18.0f, y, 18.0f, height, mouseX, mouseY);
+
+        // propagate mouse state to all child settings
+        float settingY = y + 25.0f;
+        for (Component setting : settings) {
+            if (setting.isVisible()) {
+                setting.setX(x + 2.0f);
+                setting.setY(settingY);
+                setting.setWidth(width - 4.0f);
+                setting.drawScreen(mouseX, mouseY);
+                settingY += setting.getHeight();
+            }
+        }
     }
 
     @Override
     public void mouseClicked(int mouseX, int mouseY, int mouseButton) {
-        // compute hit test directly with incoming event coordinates to support touchscreen taps
-        boolean hovered = MouseUtils.isHovered(x, y, width, height, mouseX, mouseY);
-        if (visible && hovered) {
-            // clicking the dots zone or right-clicking anywhere opens settings panel
-            boolean optHovered = MouseUtils.isHovered(x + width - 18.0f, y, 18.0f, height, mouseX, mouseY);
-            if (optHovered || mouseButton == 1) {
-                PanelGui.focusedModule = this;
-                return;
-            }
+        if (!visible) return;
 
-            // left click toggles module state
-            if (mouseButton == 0) {
-                module.toggle();
+        // check master switch click zone
+        float switchW = 24.0f;
+        float switchH = 14.0f;
+        float switchX = x + width - switchW - 6.0f;
+        float switchY = y + 5.5f;
+
+        boolean switchClicked = MouseUtils.isHovered(switchX, switchY, switchW, switchH, mouseX, mouseY);
+        boolean headerClicked = MouseUtils.isHovered(x, y, width, 24.0f, mouseX, mouseY);
+
+        if (mouseButton == 0 && (switchClicked || headerClicked)) {
+            module.toggle();
+            SoundUtil.playSound("demise.tick");
+            return;
+        }
+
+        // forward clicks to active child setting components
+        for (Component setting : settings) {
+            if (setting.isVisible() && MouseUtils.isHovered(setting.getX(), setting.getY(), setting.getWidth(), setting.getHeight(), mouseX, mouseY)) {
+                setting.mouseClicked(mouseX, mouseY, mouseButton);
+                return;
             }
         }
     }
 
     @Override
     public void mouseReleased(int mouseX, int mouseY, int state) {
+        for (Component setting : settings) {
+            if (setting.isVisible()) {
+                setting.mouseReleased(mouseX, mouseY, state);
+            }
+        }
     }
 
     @Override
     public void keyTyped(char typedChar, int keyCode) {
+        for (Component setting : settings) {
+            if (setting.isVisible()) {
+                setting.keyTyped(typedChar, keyCode);
+            }
+        }
     }
 }
