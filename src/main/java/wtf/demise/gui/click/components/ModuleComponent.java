@@ -123,16 +123,8 @@ public class ModuleComponent implements IComponent {
             Fonts.urbanist.get(14.0f).drawString(expanded ? "v" : ">", chevronX, y + 7.0f, new Color(140, 155, 175, 255).getRGB());
         }
 
-        if (module instanceof Freelook) {
-            // render a locked hold badge instead of a toggle switch for lunar-style hold utility
-            float badgeW = 34.0f;
-            float badgeH = 12.0f;
-            float badgeX = x + width - badgeW - 8.0f;
-            float badgeY = y + 7.0f;
-            RoundedUtils.drawRound(badgeX, badgeY, badgeW, badgeH, 3.0f, new Color(25, 45, 65, 180));
-            Fonts.urbanist.get(11.0f).drawString("HOLD", badgeX + 5.0f, badgeY + 2.5f, new Color(120, 200, 255, 230).getRGB());
-        } else {
-            // master toggle switch on top right of the card header
+        // master toggle switch on top right of the card header (omitted for freelook)
+        if (!(module instanceof Freelook)) {
             float switchW = 20.0f;
             float switchH = 11.0f;
             float switchX = x + width - switchW - 8.0f;

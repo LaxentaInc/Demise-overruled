@@ -204,8 +204,10 @@ public class Demise {
             discordRP.stop();
             LOGGER.info("Discord Rich Presence stopped.");
         }
-        configManager.saveConfigs();
-        LOGGER.info("All configurations saved.");
+        if (configManager != null) {
+            configManager.saveConfigs();
+            LOGGER.info("All configurations saved.");
+        }
     }
 
     public static class HWID {

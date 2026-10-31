@@ -45,7 +45,7 @@ public class ConfigManager {
             config.loadConfig(jsonObject);
             Demise.LOGGER.info("Loaded config: {}", config.getName());
             return true;
-        } catch (IOException e) {
+        } catch (Exception e) {
             Demise.LOGGER.error("Failed to load config: {}", config.getName(), e);
             return false;
         }
