@@ -48,9 +48,9 @@ public class PanelGui extends GuiScreen {
     // ---- layout constants (single source of truth for draw + click) ----
     public static final float SIDEBAR_WIDTH = 118.0f;
     public static final float TOP_BAR_HEIGHT = 32.0f;
-    public static final float NAV_START = 42.0f;
-    public static final float NAV_ITEM_HEIGHT = 24.0f;
-    public static final float NAV_STEP = 28.0f;
+    public static final float NAV_START = 40.0f;
+    public static final float NAV_ITEM_HEIGHT = 22.0f;
+    public static final float NAV_STEP = 26.0f;
     public static final float PILL_HEIGHT = 22.0f;
 
     // cached avatar texture from widgets.svg
@@ -128,9 +128,12 @@ public class PanelGui extends GuiScreen {
         searchCategoryComponent = new SearchCategory();
 
         navItems.add(new NavItem("Combat", ModuleCategory.Combat, false));
+        navItems.add(new NavItem("Legit", ModuleCategory.Legit, false));
         navItems.add(new NavItem("Movement", ModuleCategory.Movement, false));
         navItems.add(new NavItem("Player", ModuleCategory.Player, false));
         navItems.add(new NavItem("Render", ModuleCategory.Visual, false));
+        navItems.add(new NavItem("Exploit", ModuleCategory.Exploit, false));
+        navItems.add(new NavItem("Misc", ModuleCategory.Misc, false));
         navItems.add(new NavItem("Config", null, true));
 
         if (selectedCategory == null && !categories.isEmpty()) {
@@ -251,14 +254,16 @@ public class PanelGui extends GuiScreen {
             float itemW = SIDEBAR_WIDTH - 16.0f;
             boolean hovered = MouseUtils.isHovered(itemX, itemY, itemW, NAV_ITEM_HEIGHT, mouseX, mouseY);
 
+            float fontY = itemY + (NAV_ITEM_HEIGHT - Fonts.urbanist.get(15.0f).getHeight()) / 2.0f + 0.5f;
+
             if (selected) {
                 RoundedUtils.drawRoundOutline(itemX, itemY, itemW, NAV_ITEM_HEIGHT, 5.0f, 0.8f, PILL_ACTIVE_BG, PILL_ACTIVE_BORDER);
-                Fonts.urbanist.get(16.0f).drawString(item.name, itemX + 10.0f, itemY + (NAV_ITEM_HEIGHT - 16.0f) / 2.0f + 1.0f, Color.white.getRGB());
+                Fonts.urbanist.get(15.0f).drawString(item.name, itemX + 10.0f, fontY, Color.white.getRGB());
             } else {
                 if (hovered) {
                     RoundedUtils.drawRound(itemX, itemY, itemW, NAV_ITEM_HEIGHT, 5.0f, new Color(255, 255, 255, 12));
                 }
-                Fonts.urbanist.get(16.0f).drawString(item.name, itemX + 10.0f, itemY + (NAV_ITEM_HEIGHT - 16.0f) / 2.0f + 1.0f,
+                Fonts.urbanist.get(15.0f).drawString(item.name, itemX + 10.0f, fontY,
                         (hovered ? Color.white : TEXT_BODY).getRGB());
             }
 

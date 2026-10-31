@@ -29,13 +29,13 @@ public class ModuleManager {
     private static final Set<Class<? extends Module>> LEGIT_MODULES = Set.of(
             AimAssist.class, AutoClicker.class, AutoHeal.class, AutoRod.class, AutoWeapon.class, BackTrack.class,
             CombatHelper.class, HitBox.class, HitSelect.class, JumpReset.class, LegitScaffold.class, NoHitDelay.class,
-            Reach.class, SprintReset.class, LegitStrafe.class, Freelook.class, FreeCam.class
+            Reach.class, SprintReset.class, LegitStrafe.class
     );
 
     private static final Set<Class<? extends Module>> MOVEMENT_MODULES = Set.of(
             AutoWalk.class, Fly.class, Freeze.class, InvMove.class, Jesus.class, JumpDelay.class, LongJump.class,
             MotionModifier.class, NoSlow.class, Phase.class, SafeWalk.class, Sneak.class, Speed.class, Sprint.class,
-            Step.class, Strafe.class, TargetStrafe.class, WallClimb.class, NoWeb.class
+            Step.class, Strafe.class, TargetStrafe.class, WallClimb.class, NoWeb.class, Freelook.class
     );
 
     private static final Set<Class<? extends Module>> PLAYER_MODULES = Set.of(
@@ -62,7 +62,7 @@ public class ModuleManager {
             ForceDinnerbone.class, FullBright.class, Interface.class, ItemESP.class, ItemPhysics.class,
             MainMenuOptions.class, MotionBlur.class, NoHurtCam.class, NoRenderOffsetReset.class,
             Rotation.class, Shaders.class, ThirdPersonDistance.class, Trajectories.class, ViewBobbing.class,
-            VisualAimPoint.class, TargetHud.class, RealPos.class
+            VisualAimPoint.class, TargetHud.class, RealPos.class, FreeCam.class
     );
 
     private final Map<ModuleCategory, List<Module>> modulesByCategory;
