@@ -1,5 +1,6 @@
-# Demise OverRuled By @Laxenta LLC. All rights reserved.
-A Minecraft client based around bypassing strict anticheats.
+# Demise OverRuled.
+- A Modern Minecraft utility client based around bypassing annoying anticheats. 
+
 I am not going to host cheat clients on github and risk my account.
 Get it on: https://colorwall.xyz/api/download/demise
 ### How to install?

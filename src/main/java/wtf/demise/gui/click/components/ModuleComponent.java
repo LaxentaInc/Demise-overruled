@@ -4,6 +4,7 @@ import lombok.Getter;
 import lombok.Setter;
 import wtf.demise.features.modules.Module;
 import wtf.demise.features.modules.ModuleCategory;
+import wtf.demise.features.modules.impl.visual.Freelook;
 import wtf.demise.features.values.Value;
 import wtf.demise.features.values.impl.*;
 import wtf.demise.gui.click.Component;
@@ -122,23 +123,33 @@ public class ModuleComponent implements IComponent {
             Fonts.urbanist.get(14.0f).drawString(expanded ? "v" : ">", chevronX, y + 7.0f, new Color(140, 155, 175, 255).getRGB());
         }
 
-        // master toggle switch on top right of the card header
-        float switchW = 20.0f;
-        float switchH = 11.0f;
-        float switchX = x + width - switchW - 8.0f;
-        float switchY = y + 7.5f;
+        if (module instanceof Freelook) {
+            // render a locked hold badge instead of a toggle switch for lunar-style hold utility
+            float badgeW = 34.0f;
+            float badgeH = 12.0f;
+            float badgeX = x + width - badgeW - 8.0f;
+            float badgeY = y + 7.0f;
+            RoundedUtils.drawRound(badgeX, badgeY, badgeW, badgeH, 3.0f, new Color(25, 45, 65, 180));
+            Fonts.urbanist.get(11.0f).drawString("HOLD", badgeX + 5.0f, badgeY + 2.5f, new Color(120, 200, 255, 230).getRGB());
+        } else {
+            // master toggle switch on top right of the card header
+            float switchW = 20.0f;
+            float switchH = 11.0f;
+            float switchX = x + width - switchW - 8.0f;
+            float switchY = y + 7.5f;
 
-        float anim = (float) toggleAnimation.getOutput();
-        Color trackBg = ColorUtils.interpolateColorC(COLOR_TRACK_OFF, COLOR_TRACK_ON, anim);
+            float anim = (float) toggleAnimation.getOutput();
+            Color trackBg = ColorUtils.interpolateColorC(COLOR_TRACK_OFF, COLOR_TRACK_ON, anim);
 
-        // draw switch track
-        RoundedUtils.drawRound(switchX, switchY, switchW, switchH, 5.5f, trackBg);
+            // draw switch track
+            RoundedUtils.drawRound(switchX, switchY, switchW, switchH, 5.5f, trackBg);
 
-        // draw switch knob
-        float knobDiameter = 8.0f;
-        float knobX = switchX + 1.5f + (switchW - knobDiameter - 3.0f) * anim;
-        float knobY = switchY + (switchH - knobDiameter) / 2.0f;
-        RoundedUtils.drawRound(knobX, knobY, knobDiameter, knobDiameter, knobDiameter / 2.0f, COLOR_KNOB);
+            // draw switch knob
+            float knobDiameter = 8.0f;
+            float knobX = switchX + 1.5f + (switchW - knobDiameter - 3.0f) * anim;
+            float knobY = switchY + (switchH - knobDiameter) / 2.0f;
+            RoundedUtils.drawRound(knobX, knobY, knobDiameter, knobDiameter, knobDiameter / 2.0f, COLOR_KNOB);
+        }
 
         // only draw settings if card is expanded
         if (expanded && !settings.isEmpty()) {
@@ -174,23 +185,32 @@ public class ModuleComponent implements IComponent {
         // header click zone
         boolean headerClicked = MouseUtils.isHovered(x, y, width, 23.0f, mouseX, mouseY);
 
-        if (switchClicked && mouseButton == 0) {
-            // click on switch toggles module state
-            module.toggle();
-            SoundUtil.playSound("demise.tick");
-            return;
-        }
-
-        if (headerClicked) {
-            if (mouseButton == 1 || (mouseButton == 0 && !switchClicked && !settings.isEmpty())) {
-                // right-click anywhere on header or click on title folds/unfolds settings
+        if (module instanceof Freelook) {
+            // freelook is always active; clicking header folds or unfolds settings
+            if (headerClicked) {
                 expanded = !expanded;
                 SoundUtil.playSound("demise.tick");
                 return;
-            } else if (mouseButton == 0 && settings.isEmpty()) {
+            }
+        } else {
+            if (switchClicked && mouseButton == 0) {
+                // click on switch toggles module state
                 module.toggle();
                 SoundUtil.playSound("demise.tick");
                 return;
+            }
+
+            if (headerClicked) {
+                if (mouseButton == 1 || (mouseButton == 0 && !switchClicked && !settings.isEmpty())) {
+                    // right-click anywhere on header or click on title folds/unfolds settings
+                    expanded = !expanded;
+                    SoundUtil.playSound("demise.tick");
+                    return;
+                } else if (mouseButton == 0 && settings.isEmpty()) {
+                    module.toggle();
+                    SoundUtil.playSound("demise.tick");
+                    return;
+                }
             }
         }
 

@@ -16,8 +16,6 @@ public class Freelook extends Module {
     private boolean active = false;
 
     public Freelook() {
-        // initialize as permanently enabled utility mod
-        setState(true);
     }
 
     @Override
