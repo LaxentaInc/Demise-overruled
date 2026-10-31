@@ -109,7 +109,7 @@ public class Category implements IComponent {
                 cardY = rightColY - scrollOffset;
                 rightColY += cardH + rowGap;
             }
-
+            
             module.setX(cardX);
             module.setY(cardY);
             module.setWidth(cardWidth);
