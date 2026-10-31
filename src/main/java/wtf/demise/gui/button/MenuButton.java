@@ -27,13 +27,13 @@ public class MenuButton implements Button, InstanceAccess {
     private float interpolatedHeight;
     public static boolean shader;
 
-    // dark glass palette constants matching client theme
-    private static final Color BTN_BG = new Color(13, 18, 28, 215);
-    private static final Color BTN_BG_HOVER = new Color(20, 30, 48, 240);
-    private static final Color BTN_BORDER = new Color(38, 50, 72, 170);
-    private static final Color BTN_BORDER_HOVER = new Color(56, 189, 248, 235);
-    private static final Color TEXT_IDLE = new Color(225, 235, 248, 235);
-    private static final Color TEXT_HOVER = new Color(255, 255, 255, 255);
+    // translucent glass palette constants matching client theme
+    private static final Color BTN_BG = new Color(10, 14, 22, 220);
+    private static final Color BTN_BG_HOVER = new Color(18, 28, 44, 245);
+    private static final Color BTN_BORDER = new Color(48, 62, 86, 200);
+    private static final Color BTN_BORDER_HOVER = new Color(56, 189, 248, 245);
+    private static final Color TEXT_IDLE = Color.white;
+    private static final Color TEXT_HOVER = Color.white;
 
     public MenuButton(String text) {
         this.text = text;
