@@ -1,9 +1,18 @@
 name: Auto Release Demise Client
 
 on:
+  schedule:
+    # check for version changes every 30 minutes automatically
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+    inputs:
+      force_build:
+        description: 'force build release even if tag exists'
+        required: false
+        default: false
+        type: boolean
   push:
     branches: [ "main", "master" ]
-  workflow_dispatch:
 
 permissions:
   contents: write
@@ -14,34 +23,50 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # checkout the repository code
-      - name: Checkout repository
+      # checkout the target repository source code from organization repo
+      - name: Checkout Demise Overruled
         uses: actions/checkout@v4
+        with:
+          repository: LaxentaInc/Demise-overruled
+          ref: main
 
-      # inspect version file and compare against existing releases
+      # inspect version file and compare against existing releases in this repo
       - name: Check version.md
         id: version_check
         run: |
-          # read version string and strip any trailing whitespace
-          VERSION=$(cat .github/workflows/version.md | tr -d '[:space:]')
+          # read version string and strip whitespace
+          if [ -f .github/workflows/version.md ]; then
+            VERSION=$(cat .github/workflows/version.md | tr -d '[:space:]')
+          elif [ -f version.md ]; then
+            VERSION=$(cat version.md | tr -d '[:space:]')
+          else
+            echo "error: version file not found in repository"
+            exit 1
+          fi
+
           echo "detected version: $VERSION"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "tag=v$VERSION" >> $GITHUB_OUTPUT
 
-          # query github releases via cli to check if tag exists
+          # check if release already exists in this repository
           if gh release view "v$VERSION" > /dev/null 2>&1; then
-            echo "release_exists=true" >> $GITHUB_OUTPUT
-            echo "version v$VERSION is already released. skipping release build."
+            if [ "${{ github.event.inputs.force_build }}" = "true" ]; then
+              echo "release_exists=false" >> $GITHUB_OUTPUT
+              echo "force build requested. rebuilding existing release."
+            else
+              echo "release_exists=true" >> $GITHUB_OUTPUT
+              echo "version v$VERSION is already released. skipping build."
+            fi
           else
             echo "release_exists=false" >> $GITHUB_OUTPUT
-            echo "new version v$VERSION detected! triggering release build."
+            echo "new version v$VERSION detected! proceeding with build."
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # provision java 17 runtime only when a new release is needed
+      # provision java 17 runtime when building
       - name: Set up JDK 17
-        if: steps.version_check.outputs.release_exists == 'false' || github.event_name == 'workflow_dispatch'
+        if: steps.version_check.outputs.release_exists == 'false'
         uses: actions/setup-java@v4
         with:
           java-version: '17'
@@ -50,17 +75,17 @@ jobs:
 
       # ensure gradlew execution permissions
       - name: Grant execute permission for gradlew
-        if: steps.version_check.outputs.release_exists == 'false' || github.event_name == 'workflow_dispatch'
+        if: steps.version_check.outputs.release_exists == 'false'
         run: chmod +x gradlew
 
-      # compile shadow fat jar with bundled dependencies and windows natives
+      # compile shadow fat jar with bundled dependencies
       - name: Build shadow jar
-        if: steps.version_check.outputs.release_exists == 'false' || github.event_name == 'workflow_dispatch'
+        if: steps.version_check.outputs.release_exists == 'false'
         run: ./gradlew shadowJar --no-daemon
 
-      # compute sha256 checksum for binary integrity and virustotal scans
+      # compute sha256 checksum for binary integrity and security verification
       - name: Generate sha256 checksum
-        if: steps.version_check.outputs.release_exists == 'false' || github.event_name == 'workflow_dispatch'
+        if: steps.version_check.outputs.release_exists == 'false'
         id: checksum
         run: |
           cd build/libs
@@ -71,9 +96,9 @@ jobs:
           echo "$SHA256 *$JAR_FILE" > checksum.sha256
           echo "computed sha256: $SHA256"
 
-      # publish the automated github release with files and instructions
+      # publish github release with compiled binaries and instructions
       - name: Publish new version release
-        if: steps.version_check.outputs.release_exists == 'false' || github.event_name == 'workflow_dispatch'
+        if: steps.version_check.outputs.release_exists == 'false'
         uses: softprops/action-gh-release@v2
         with:
           name: Demise Client v${{ steps.version_check.outputs.version }}
@@ -87,7 +112,8 @@ jobs:
             * **Version**: `v${{ steps.version_check.outputs.version }}`
             * **Binary**: `${{ steps.checksum.outputs.jar_file }}`
             * **SHA-256**: `${{ steps.checksum.outputs.sha256 }}`
-            * **Security Verification**: Compiled cleanly from source via GitHub Actions runner.
+            * **Source Repository**: `LaxentaInc/Demise-overruled`
+            * **Verification**: Compiled cleanly from source via GitHub Actions runner.
 
             ---
 
@@ -97,9 +123,5 @@ jobs:
             3. Copy both files into your `.minecraft` directory:
                * Windows path: `%appdata%\.minecraft\versions\demise\`
                * Verify the files are named `demise.jar` and `demise.json`.
-            4. In your Minecraft launcher (Vanilla, HMCL, Prism, TLauncher):
-               * Select version `release demise`.
-               * Ensure **Java 17** is chosen in launcher Java settings.
-            5. Launch and enjoy!
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            4. In your Minecraft launcher (Vanilla, HMCL, Prism, PojavLauncher):
+               * Select the `demise` version profile and launch.

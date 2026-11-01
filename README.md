@@ -2,8 +2,8 @@
 - A Modern Minecraft utility client based around bypassing annoying anticheats. 
 - The code is opensource under AGPL-3, and releases are Automated (if any present).
 
-I am not going to host cheat clients on github and risk my account.
-Get it on: https://colorwall.xyz/api/download/demise
+I am not going to host cheat clients on my main github. 
+Get Latest build on: https://github.com/Colorwall/demise-releases/releases
 ### How to install?
 [demise.json](https://github.com/LaxentaInc/Demise-overruled/releases/download/v2.1.1/demise.json) 
 Let me paste screenshots, so its IMMIDIATELY CLEAR HOW TO USE THE JAR + JSON FILE AND WHERE TO PUT THEM:
