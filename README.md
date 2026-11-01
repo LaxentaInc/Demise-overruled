@@ -8,7 +8,7 @@ Get it on: https://colorwall.xyz/api/download/demise
 Let me paste screenshots, so its IMMIDIATELY CLEAR HOW TO USE THE JAR + JSON FILE AND WHERE TO PUT THEM:
 
 
-## DO "CTRL + R"  and PASTE " `%appdata%/.minecraft/versions` "
+## DO " `CTRL + R` "  and PASTE " `%appdata%/.minecraft/versions` "
 <img width="436" height="229" alt="image" src="https://github.com/user-attachments/assets/e77e30ca-1e4a-4623-8b97-bb7f5858eba4" />
 
 ## THEN CREATE A FOLDER NAMED DEMISE
