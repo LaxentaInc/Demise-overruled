@@ -10,10 +10,17 @@ import wtf.demise.Demise;
 import wtf.demise.features.config.impl.ModuleConfig;
 import wtf.demise.features.config.impl.WidgetConfig;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.io.Reader;
+import java.io.SequenceInputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -39,12 +46,25 @@ public class ConfigManager {
             return false;
         }
 
-        try (FileReader reader = new FileReader(config.getFile())) {
-            JsonParser parser = new JsonParser(); // Create an instance
-            JsonObject jsonObject = parser.parse(reader).getAsJsonObject(); // Use instance method
-            config.loadConfig(jsonObject);
-            Demise.LOGGER.info("Loaded config: {}", config.getName());
-            return true;
+        try (InputStream in = new FileInputStream(config.getFile())) {
+            // strip byte order mark if present to prevent parser crash
+            byte[] bom = new byte[3];
+            int read = in.read(bom, 0, 3);
+            InputStream targetStream = in;
+            if (read == 3 && bom[0] == (byte) 0xEF && bom[1] == (byte) 0xBB && bom[2] == (byte) 0xBF) {
+                // bom skipped
+            } else if (read > 0) {
+                byte[] rest = new byte[read];
+                System.arraycopy(bom, 0, rest, 0, read);
+                targetStream = new SequenceInputStream(new ByteArrayInputStream(rest), in);
+            }
+            try (Reader reader = new InputStreamReader(targetStream, StandardCharsets.UTF_8)) {
+                JsonParser parser = new JsonParser();
+                JsonObject jsonObject = parser.parse(reader).getAsJsonObject();
+                config.loadConfig(jsonObject);
+                Demise.LOGGER.info("Loaded config: {}", config.getName());
+                return true;
+            }
         } catch (Exception e) {
             Demise.LOGGER.error("Failed to load config: {}", config.getName(), e);
             return false;
@@ -76,11 +96,11 @@ public class ConfigManager {
         JsonObject jsonObject = config.saveConfig();
         String jsonString = gson.toJson(jsonObject);
 
-        try (FileWriter writer = new FileWriter(config.getFile())) {
+        try (OutputStreamWriter writer = new OutputStreamWriter(new FileOutputStream(config.getFile()), StandardCharsets.UTF_8)) {
             writer.write(jsonString);
             Demise.LOGGER.info("Saved config: {}", config.getName());
             return true;
-        } catch (IOException e) {
+        } catch (Exception e) {
             Demise.LOGGER.error("Failed to save config: {}", config.getName(), e);
             return false;
         }

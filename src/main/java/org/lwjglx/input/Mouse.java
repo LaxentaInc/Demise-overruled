@@ -49,16 +49,24 @@ public class Mouse {
     private static boolean clipPostionToDisplay = true;
     private static int ignoreNextDelta = 0;
     private static int ignoreNextMove = 0;
+    private static final boolean[] buttonStates = new boolean[16];
 
     public static void addMoveEvent(double mouseX, double mouseY) {
-        if (ignoreNextMove > 0) {
-            ignoreNextMove--;
-            return;
-        }
-        dx += (int) mouseX - latestX;
-        dy += Display.getHeight() - (int) mouseY - latestY;
+        // update latest coordinates immediately so touch taps are placed at the actual touch point
         latestX = (int) mouseX;
         latestY = Display.getHeight() - (int) mouseY;
+        if (ignoreNextMove > 0) {
+            ignoreNextMove--;
+            x = latestX;
+            y = latestY;
+            lastEventX = latestX;
+            lastEventY = latestY;
+            dx = 0;
+            dy = 0;
+            return;
+        }
+        dx += (int) mouseX - lastEventX;
+        dy += (Display.getHeight() - (int) mouseY) - lastEventY;
         if (ignoreNextDelta > 0) {
             ignoreNextDelta--;
             x = latestX;
@@ -88,6 +96,11 @@ public class Mouse {
     }
 
     public static void addButtonEvent(int button, boolean pressed) {
+        // record button state so polling captures quick touch taps
+        if (button >= 0 && button < buttonStates.length) {
+            buttonStates[button] = pressed;
+        }
+
         lastxEvents[queue.getNextPos()] = lastEventX;
         lastyEvents[queue.getNextPos()] = lastEventY;
         lastEventX = latestX;
@@ -167,11 +180,15 @@ public class Mouse {
                 grab ? GLFW.GLFW_CURSOR_DISABLED : GLFW.GLFW_CURSOR_NORMAL);
         grabbed = grab;
         if (!grab) {
-            // The old cursor position is sent instead of the new one in the events following mouse ungrab.
+            // disable raw mouse motion in guis so touch pointer emulation is not intercepted
+            if (GLFW.glfwRawMouseMotionSupported()) {
+                GLFW.glfwSetInputMode(Display.getWindow(), GLFW.GLFW_RAW_MOUSE_MOTION, GLFW.GLFW_FALSE);
+            }
+            // the old cursor position is sent instead of the new one in the events following mouse ungrab
             ignoreNextMove += 2;
             setCursorPosition(Display.getWidth() / 2, Display.getHeight() / 2);
-            // Movement events are not properly sent when toggling mouse grab mode.
-            // Trick the game into getting the correct mouse position if no new events appear.
+            // movement events are not properly sent when toggling mouse grab mode
+            // trick the game into getting the correct mouse position if no new events appear
             latestX = Display.getWidth() / 2;
             latestY = Display.getHeight() / 2;
             lastEventX = latestX;
@@ -189,13 +206,21 @@ public class Mouse {
             nanoTimeEvents[queue.getNextPos()] = Sys.getNanoTime();
             queue.add();
         } else {
-            ignoreNextDelta++; // Prevent camera rapidly rotating when closing GUIs.
+            // enable raw mouse motion during first-person camera mode if supported
+            if (GLFW.glfwRawMouseMotionSupported()) {
+                GLFW.glfwSetInputMode(Display.getWindow(), GLFW.GLFW_RAW_MOUSE_MOTION, GLFW.GLFW_TRUE);
+            }
+            ignoreNextDelta++; // prevent camera rapidly rotating when closing guis
             dx = 0;
             dy = 0;
         }
     }
 
     public static boolean isButtonDown(int button) {
+        // check tracked button array first for instantaneous touch tap pulses
+        if (button >= 0 && button < buttonStates.length && buttonStates[button]) {
+            return true;
+        }
         return GLFW.glfwGetMouseButton(Display.getWindow(), button) == GLFW.GLFW_PRESS;
     }
 

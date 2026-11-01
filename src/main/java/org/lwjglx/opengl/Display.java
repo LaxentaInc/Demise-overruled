@@ -46,8 +46,6 @@ public class Display {
     private static boolean latestResized = false;
     private static int latestWidth = 0;
     private static int latestHeight = 0;
-    private static boolean cancelNextChar = false;
-    private static Keyboard.KeyEvent ingredientKeyEvent;
     private static ByteBuffer[] savedIcons;
 
     static {
@@ -151,56 +149,33 @@ public class Display {
 
             @Override
             public void invoke(long window, int key, int scancode, int action, int mods) {
-                cancelNextChar = false;
-                if (key > GLFW_KEY_SPACE && key <= GLFW_KEY_GRAVE_ACCENT) { // Handle keys have a char. Exclude space to
-                    // avoid extra input when switching IME
-                    if ((GLFW_MOD_CONTROL & mods) != 0 && (GLFW_MOD_ALT & mods) == 0) { // Handle ctrl + x/c/v.
-                        Keyboard.addGlfwKeyEvent(window, key, scancode, action, mods, (char) (key & 0x1f));
-                        cancelNextChar = true; // Cancel char event from ctrl key since its already handled here
-                    } else if (action > 0) { // Delay press and repeat key event to actual char input. There is ALWAYS a
-                        // char after them
-                        ingredientKeyEvent = new Keyboard.KeyEvent(
-                                KeyCodes.glfwToLwjgl(key),
-                                '\0',
-                                action > 1 ? Keyboard.KeyState.REPEAT : Keyboard.KeyState.PRESS,
-                                Sys.getNanoTime());
-                    } else { // Release event
-                        if (ingredientKeyEvent != null && ingredientKeyEvent.key == KeyCodes.glfwToLwjgl(key)) {
-                            ingredientKeyEvent.queueOutOfOrderRelease = true;
-                        }
-                        Keyboard.addGlfwKeyEvent(window, key, scancode, action, mods, '\0');
+                // dispatch key event immediately to lwjgl keyboard event queue so pojavlauncher touch controls work
+                char mappedChar = key == GLFW_KEY_ENTER ? 0x0D :
+                        key == GLFW_KEY_ESCAPE ? 0x1B :
+                                key == GLFW_KEY_TAB ? 0x09 :
+                                        key == GLFW_KEY_BACKSPACE ? 0x08 :
+                                                '\0';
+
+                if (mappedChar == '\0' && key >= GLFW_KEY_SPACE && key <= GLFW_KEY_GRAVE_ACCENT) {
+                    boolean shift = (mods & GLFW_MOD_SHIFT) != 0;
+                    if (key >= GLFW_KEY_A && key <= GLFW_KEY_Z) {
+                        mappedChar = (char) (shift ? key : (key + 32));
+                    } else {
+                        mappedChar = (char) key;
                     }
-                } else { // Other key with no char event associated
-                    char mappedChar = key == GLFW_KEY_ENTER ? 0x0D :
-                            key == GLFW_KEY_ESCAPE ? 0x1B :
-                                    key == GLFW_KEY_TAB ? 0x09 :
-                                            key == GLFW_KEY_BACKSPACE ? 0x08 :
-                                                    '\0';
-                    Keyboard.addGlfwKeyEvent(window, key, scancode, action, mods, mappedChar);
                 }
+
+                Keyboard.addGlfwKeyEvent(window, key, scancode, action, mods, mappedChar);
             }
         };
 
         Window.charCallback = new GLFWCharCallback() {
             @Override
             public void invoke(long window, int codepoint) {
-                if (cancelNextChar) { // Char event being cancelled
-                    cancelNextChar = false;
-                } else if (ingredientKeyEvent != null) {
-                    ingredientKeyEvent.aChar = (char) codepoint; // Send char with ASCII key event here
-                    Keyboard.addRawKeyEvent(ingredientKeyEvent);
-                    if (ingredientKeyEvent.queueOutOfOrderRelease) {
-                        ingredientKeyEvent = ingredientKeyEvent.copy();
-                        ingredientKeyEvent.state = Keyboard.KeyState.RELEASE;
-                        Keyboard.addRawKeyEvent(ingredientKeyEvent);
-                    }
-                    ingredientKeyEvent = null;
-                } else {
-                    Keyboard.addCharEvent(0, (char) codepoint); // Non-ASCII chars
-                }
+                // pass codepoint directly to character event queue for chat and text boxes
+                Keyboard.addCharEvent(0, (char) codepoint);
             }
         };
-
         Window.cursorPosCallback = new GLFWCursorPosCallback() {
 
             @Override
@@ -314,9 +289,7 @@ public class Display {
 
         displayCreated = true;
 
-        if (isCreated() && GLFW.glfwRawMouseMotionSupported()) {
-            GLFW.glfwSetInputMode(Window.handle, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
-        }
+        // raw mouse motion is managed in mouse.setgrabbed only during first-person camera mode
 
         if (startFullscreen) {
             setFullscreen(true);
